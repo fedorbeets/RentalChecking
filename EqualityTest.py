@@ -5,7 +5,7 @@ import random
 
 # Picking key_space as all numbers 0...pairing.curve_order, which seems like a suitably large number.
 key_space = pairing.curve_order
-
+MESSAGE_SPACE = 32
 # TODO; rewrite with use of field_elements helper functions
 
 
@@ -22,7 +22,9 @@ def setup(n):
         alpha_x = rand.randint(1, pairing.curve_order)
         gamma_x = rand.randint(1, pairing.curve_order)
         # random number in key space
-        beta_x = rand.randint(1, key_space)
+        beta_x = []
+        for j in range(0, MESSAGE_SPACE):
+            beta_x.append(rand.randint(1, key_space))
         # put elements on curve
         elliptic_alpha_x = multiply(pairing.G2, alpha_x)
         elliptic_gamma_x = multiply(pairing.G2, gamma_x)
@@ -95,8 +97,13 @@ def test(token, n, *arg):
 
 # pseudo-random permutation function, stub implementation
 # todo: make non-stub implementation
-def prp(beta: int, y: int) -> int:
-    return 5
+def prp(b: list, x: int) -> int:
+    output = 1
+    assert len(b) <= MESSAGE_SPACE
+    # todo: starting at 1 ignores first bit of message x, correct?
+    for i in range(1, len(b)):  # prf starts at 1, 0th is pairing.multiply(g1,alpha_i)
+        output *= pow(b[i], ((x >> i) & 1))  # only keep bit i
+    return output
 
 
 # stub implementation, needs to be a one way function that returns an element on the G1 curve
@@ -106,7 +113,8 @@ def elliptic_hash(number: int) -> tuple:
     return multiply(pairing.G1, modded_number)
 
 
-#print("pretest")
+print("pretest")
+print(prp([2,2,2,2,2,2,2,2,2,2], 3))
 
 
 print("Setup")
