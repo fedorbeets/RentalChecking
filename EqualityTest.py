@@ -2,8 +2,6 @@ import py_ecc.optimized_bn128.optimized_pairing as pairing
 from py_ecc.optimized_bn128.optimized_pairing import multiply
 from py_ecc.optimized_bn128.optimized_pairing import add
 import random
-import numpy as np
-from operator import mul
 
 # Picking key_space as all numbers 0...pairing.curve_order, which seems like a suitably large number.
 key_space = pairing.curve_order
