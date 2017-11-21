@@ -43,6 +43,8 @@ def setup(n, alpha=0, gamma=0, beta=0):  # optional rng determination for testin
         single_chck['beta'] = beta_x
         single_chck['gamma_x'] = gamma_x
         chck_keys.append(single_chck)
+    print(msks)
+    print(chck_keys)
     return msks, chck_keys
 
 
@@ -56,6 +58,7 @@ def gen_token(msks, rule, n, u=0):
     # identity element for addition
     total = (pairing.FQ2.zero(), pairing.FQ2.zero(), pairing.FQ2.zero())
     mini_tokens = []
+    test_total = pairing.FQ12.one()
     for x in range(n):
         single_token = {}  # the values of a token for a single x
         u_x = rand.randint(1, pairing.curve_order)
@@ -67,8 +70,9 @@ def gen_token(msks, rule, n, u=0):
         exponent = (prp(msks[x]['beta'], rule[x]) * u_x) % pairing.curve_order
         single_token['alpha_mul_g2_mul_prp'] = multiply(msks[x]['alpha_multiplied'], exponent)
         mini_tokens.append(single_token)
-
         total = add(total, multiply(msks[x]['gamma_multiplied'], u_x))
+        #test_total *= pairing.pairing(msks[x]['gamma_multiplied'], pairing.G1)
+    #assert pairing.pairing(total, pairing.G1) == test_total
     return mini_tokens, total
 
 
@@ -88,7 +92,7 @@ def encrypt(chck_key, identifier, message, r=0):
 
     exponent = (prp(chck_key['beta'], message) * r_x) % pairing.curve_order
     g1_exponentiated = multiply(chck_key['alpha_g1'], exponent)
-    ident_hash_mul_message = multiply(ct_i['hash_ident'], message)
+    ident_hash_mul_message = multiply(ct_i['hash_ident'], chck_key['gamma_x'])
     ct_i['g1_mul_prp_add_ident_hash'] = add(g1_exponentiated, ident_hash_mul_message)
     return ct_i
 
@@ -144,25 +148,25 @@ def elliptic_hash(number: int) -> tuple:
 
 def test_routine():
     print("Setup")
-    master_keys, check_keys = setup(3, alpha=5818522395588039412954343975486516393552931040546314349540429010151306842406, gamma=21840120018203973380108902518439383386874233938463983100663117878539342073142, beta=[3890197982989915386937907033641443907445334448819903817838634995005371367774, 3377819516658563406193266642509682086057438303973431508351607752416141484415, 2333351816756889978404747124105339972477692632310225610166271688093474752000, 15459408238979867368774029275963471432116994200517072275418098814358363696137, 7968386643605629209226046314496324623085975756046330478632427112169597133338])
+    master_keys, check_keys = setup(3, alpha=2, gamma=2, beta=[3, 4])
     print("GenToken")
     # note: rng for u is re-used in every rule-loop, that is not realistic for system
-    test_token = gen_token(master_keys, [1, 1, 1], 3, u=5084097986348390729269908090106955298740040842009692311344139206652509589974)
+    test_token = gen_token(master_keys, [1, 1, 1], 3, u=5)
     print("encrypt checks")
     identify = 5
-    check1 = encrypt(check_keys[0], identify, 1, r=13310361639518432155598778816999107675119185980518410883744747962400635549209)
+    check1 = encrypt(check_keys[0], identify, 1, r=6)
     check2 = encrypt(check_keys[1], identify, 1, r=4708642907422499050704862076428092405590089492351158641052908492133734418081)
     check3 = encrypt(check_keys[2], identify, 1, r=10465556228797287385848073339865451232298354941118980474002801677313279097215)
     print("Check")
     result = test(test_token, 3, check1, check2, check3)
     print("Token = check:    ", result)
-    assert(result is False)  # big cheer if otherwise
+    # assert(result)  # big cheer if otherwise
 
 
-# test_routine()
+test_routine()
 
 
-print("pretest")
+# print("pretest")
 # pairing(P, Q+R) = pairing(P,Q) * pairing(P,R) - correct
 
 
