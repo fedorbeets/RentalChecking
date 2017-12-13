@@ -1,53 +1,39 @@
 import sys, os, time
 from solc import compile_source, compile_files, link_code
-from ethjsonrpc import EthJsonRpc
-from eth_utils import add_0x_prefix
-
-#print("Using environment in "+sys.prefix)
-#print("Python version "+sys.version)
-
-# Initiate connection to ethereum node
-#   Requires a node running with an RPC connection available at port 8545
-c = EthJsonRpc('127.0.0.1', 8545)
-print(c.web3_clientVersion())
-print(c.eth_blockNumber())
+from web3 import Web3, HTTPProvider, IPCProvider
+from web3.contract import ConciseContract
+#from eth_utils import add_0x_prefix
 
 
-'''source = """
-pragma solidity ^0.4.2;
-
-contract Example {
-
-    string s="Hello World!";
-
-    function set_s(string new_s) {
-        s = new_s;
-    }
-
-    function get_s() returns (string) {
-        return s;
-    }
-}"""'''
 
 # Basic contract compiling process.
 #   Requires that the creating account be unlocked.
 #   Note that by default, the account will only be unlocked for 5 minutes (300s).
 #   Specify a different duration in the geth personal.unlockAccount('acct','passwd',300) call, or 0 for no limit
 
-#compiled = compile_source(source)
-compiled = compile_files(["solidity_test_pairing_code.sol"], "--optimized")
-# compiled = compile_files(['Solidity/ethjsonrpc_tutorial.sol'])  #Note: Use this to compile from a file
-#print(compiled['solidity_test_pairing_code.sol:pairing_check'])
+#compiled = compile_source(source)  # if you have a source code in text
+compiled = compile_files(["solidity_test_pairing_code.sol"], "--optimized")   # compile from file
 compiledCode = compiled['solidity_test_pairing_code.sol:pairing_check']['bin']
-compiledCode = '0x'+compiledCode  # This is a hack which makes the system work
 
-# Put the contract in the pool for mining, with a gas reward for processing
-contractTx = c.create_contract(c.eth_coinbase(), add_0x_prefix(compiledCode), gas=3500000)
-print("Contract transaction id is "+contractTx)
+# Initiate connection to ethereum node
+#   Requires a node running with an RPC connection available at port 8545
+web3 = Web3(HTTPProvider('http://localhost:8545'))
 
-print("Waiting for the contract to be mined into the blockchain...")
-while c.eth_getTransactionReceipt(contractTx) is None:
-        time.sleep(1)
 
-contractAddr = c.get_contract_address(contractTx)
-print("Contract address is "+contractAddr)
+# Instantiate and deploy contract
+contract = web3.eth.contract(compiled['solidity_test_pairing_code.sol:pairing_check']['abi'], bytecode=compiledCode)
+
+
+# Get transaction hash from deployed contract
+tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 3000000})
+
+print("Transaction hash: ", tx_hash)
+
+# Get tx receipt to get contract address, wait till block is mined
+while web3.eth.getTransactionReceipt(tx_hash) is None:
+    time.sleep(1)
+
+tx_receipt = web3.eth.getTransactionReceipt(tx_hash)
+contract_address = tx_receipt['contractAddress']
+
+print("Contract address: ", contract_address)

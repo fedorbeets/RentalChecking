@@ -18,7 +18,7 @@ contract pairing_check {
         return point1;
     }
     
-    function testPairing() public returns (string){
+    function testPairing(string dummy) public returns (string){
         Pairing.G1Point memory point1 = testG1();
         Pairing.G2Point memory point2 = Pairing.P2();
         // output to event
