@@ -1,6 +1,6 @@
 import py_ecc.optimized_bn128.optimized_pairing as pairing
 from py_ecc.optimized_bn128.optimized_pairing import multiply, add
-from py_ecc.optimized_bn128.optimized_pairing import normalize1
+from py_ecc.optimized_bn128.optimized_pairing import normalize1, normalize
 import random
 import math
 
@@ -100,13 +100,22 @@ def test(token, n, *arg):
     for x in range(n):
         paired = pairing.pairing(token[0][x]['u_multiplied'], arg[x]['g1_mul_prp_add_ident_hash'])
         check_total = check_total * paired
+        # print values so I can test blockchain function
+        print("g2toU: ", pairing.normalize(token[0][x]['u_multiplied']))
+        print("g1toalpha: ", pairing.normalize(arg[x]['g1_mul_prp_add_ident_hash']))
 
     # pairing with complicated element in g2
     token_total = pairing.FQ12.one()
     for x in range(n):
         paired = pairing.pairing(token[0][x]['alpha_mul_g2_mul_prp'], arg[x]['r_x_mul'])
         token_total = token_total * paired
+        # print values so I can test blockchain function
+        print("g2toalpha: ", pairing.normalize(token[0][x]['alpha_mul_g2_mul_prp']))
+        print("g1toRX: ", pairing.normalize(arg[x]['r_x_mul']))
     token_total = token_total * pairing.pairing(token[1], arg[0]['hash_ident'])
+    #print values so I can test blockchain function
+    print("total: ", pairing.normalize(token[1]))
+    print("hashID: ", pairing.normalize(arg[0]['hash_ident']))
 
     return check_total == token_total
 
@@ -133,19 +142,19 @@ def elliptic_hash(number: int) -> tuple:
 
 def test_routine():
     print("Setup")
-    master_keys, check_keys = setup(3, alpha=2, gamma=2, beta=[3, 4])
+    master_keys, check_keys = setup(1, alpha=2, gamma=2, beta=[3, 4])
     print("GenToken")
     # note: rng for u is re-used in every rule-loop, that is not realistic for system
-    test_token = gen_token(master_keys, [1, 1, 1], 3, u=5)
+    test_token = gen_token(master_keys, [1], 1, u=5)
     print("encrypt checks")
     identify = 5
     check1 = encrypt(check_keys[0], identify, 1, r=6)
-    check2 = encrypt(check_keys[1], identify, 1, r=4708642907422499050704862076428092405590089492351158641052908492133734418081)
-    check3 = encrypt(check_keys[2], identify, 1, r=10465556228797287385848073339865451232298354941118980474002801677313279097215)
+    # check2 = encrypt(check_keys[1], identify, 1, r=4708642907422499050704862076428092405590089492351158641052908492133734418081)
+    # check3 = encrypt(check_keys[2], identify, 1, r=10465556228797287385848073339865451232298354941118980474002801677313279097215)
     print("Check")
-    result = test(test_token, 3, check1, check2, check3)
+    #print(check1)
+    result = test(test_token, 1, check1)
     print("Token = check:    ", result)
-    # assert(result)  # big cheer if otherwise
 
 
 test_routine()

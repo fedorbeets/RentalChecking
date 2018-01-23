@@ -1,29 +1,33 @@
 // In remix: compile EqualityTest.sol, not pairing.sol
-pragma solidity ^0.4.14;
+pragma solidity ^0.4.19;
+
 contract pairing_check {
-    
+
     event Result(bool result);
-    
+
+    event Integer(uint number);
+
     event Points(uint pointX, uint pointY);
-    
+
     event PointG2(uint pointX1,
                 uint pointX2,
                 uint pointY1,
                 uint pointY2);
-    
+
+
     function testG1() public returns (Pairing.G1Point){
         Pairing.G1Point memory point1 = Pairing.P1();
-        point1 = Pairing.mul(point1, 10);
+        point1 = Pairing.mul(point1, 0);
         Points(point1.X, point1.Y);
         return point1;
     }
-    
-    function testPairing(string dummy) public returns (string){
+
+    function testPairing() public returns (string){
         Pairing.G1Point memory point1 = testG1();
         Pairing.G2Point memory point2 = Pairing.P2();
         // output to event
         PointG2(point2.X[0], point2.X[1], point2.Y[0], point2.Y[1]);
-        
+
         Pairing.G1Point[] memory p1 = new Pairing.G1Point[](1);
 		Pairing.G2Point[] memory p2 = new Pairing.G2Point[](1);
 		p1[0] = point1;
@@ -31,7 +35,65 @@ contract pairing_check {
         Result(Pairing.pairing(p1,p2));
         return "Return Value";
     }
-    
+
+
+    // To test for equality:
+    // First N points must be "left side of equation"
+    // Next N+1 points must be "right side of equation"
+    function test_simple(uint[] g1points_x, uint[] g1points_y,
+        uint[] g2_points1_x, uint[] g2_points2_x, uint[] g2_points1_y, uint[] g2_points2_y
+        ) public returns (bool){
+            //Must have an equal amount of points in G1,G2
+            require(g1points_x.length == g1points_y.length && g2_points1_x.length == g2_points1_y.length
+                && g2_points1_x.length == g2_points2_x.length && g2_points1_x.length == g2_points2_y.length
+                && g1points_x.length == g2_points1_x.length);
+
+
+            // Container for all points to be paired
+            Pairing.G1Point[] memory pointsG1 = new Pairing.G1Point[](g1points_x.length);
+            Pairing.G2Point[] memory pointsG2 = new Pairing.G2Point[](g1points_x.length);
+            //Stitch points together from uints
+            for(uint8 i=0; i< g1points_x.length; i++){
+                // Negate the second part of the equation so that the pairing function returns true IFF the 2 parts are equal
+                Integer(i);
+
+                if(i >= (g1points_x.length/2)){
+                    pointsG1[i] = Pairing.negate(Pairing.G1Point(g1points_x[i], g1points_y[i]));
+                } else {
+                    pointsG1[i] = Pairing.G1Point(g1points_x[i], g1points_y[i]);
+                }
+
+                //Can't directly put distinct values into a G2Point, need to create arrays first
+                uint[2] memory g2_x_points;
+                g2_x_points[0] = g2_points1_x[i];
+                g2_x_points[1] = g2_points2_x[i];
+
+                uint[2] memory g2_y_points;
+                g2_y_points[0] = g2_points1_y[i];
+                g2_y_points[1] = g2_points2_y[i];
+
+                pointsG2[i] = Pairing.G2Point(g2_x_points,g2_y_points);
+
+                //Log points as events
+                Points(pointsG1[i].X, pointsG1[i].Y);
+                PointG2(pointsG2[i].X[0], pointsG2[i].X[1], pointsG2[i].Y[0], pointsG2[i].Y[1]);
+            }
+
+            //Contract fails to execute transaction when pairing instruction is included.
+            // Possibly runs out of gas
+            // May also just be throwing an exception
+            // https://ethereum.stackexchange.com/questions/28077/how-do-i-detect-a-failed-transaction-after-the-byzantium-fork-as-the-revert-opco
+            // This link says it is because of a thrown exception
+            // Transaction is trying to call non-existant opcode 0xfe (opcode not specified in yellowpaper)
+            //Do pairing, store result in memory and emit as event
+            //Do pairing, store result in memory and emit as event
+
+            bool result = Pairing.pairing(pointsG1, pointsG2);
+            Result(result); //emit event
+            //Result(true);
+            return result;
+
+        }
     
 }
 

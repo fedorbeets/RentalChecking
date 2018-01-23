@@ -17,23 +17,23 @@ compiledCode = compiled['solidity_test_pairing_code.sol:pairing_check']['bin']
 
 # Initiate connection to ethereum node
 #   Requires a node running with an RPC connection available at port 8545
-web3 = Web3(HTTPProvider('http://localhost:8545'))
+web3 = Web3(HTTPProvider('http://localhost:7545'))
 
 
 # Instantiate and deploy contract
-contract = web3.eth.contract(compiled['solidity_test_pairing_code.sol:pairing_check']['abi'], bytecode=compiledCode)
+contract = web3.eth.contract(abi=compiled['solidity_test_pairing_code.sol:pairing_check']['abi'], bytecode=compiledCode)
 
 
 # Get transaction hash from deployed contract
 tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 3000000})
 
-print("Transaction hash: ", tx_hash)
+print("Transaction hash: ", tx_hash.hex())
 
 # Get tx receipt to get contract address, wait till block is mined
 while web3.eth.getTransactionReceipt(tx_hash) is None:
     time.sleep(1)
 
 tx_receipt = web3.eth.getTransactionReceipt(tx_hash)
-contract_address = tx_receipt['contractAddress']
+CONTRACT_ADDRESS = tx_receipt['contractAddress']
 
-print("Contract address: ", contract_address)
+print("Contract address: ", CONTRACT_ADDRESS)
