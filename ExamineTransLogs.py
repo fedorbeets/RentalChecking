@@ -37,7 +37,7 @@ def examineTransLogs(contractAddr, transaction_addr):
             for j in range(floor((lengthy - 2) / 64)):
                 number = web3.toInt(hexstr=data[2 + (64 * j):2 + (64 * (j + 1))])
                 print("        uint", j, ": ", number)
-        elif (lengthy - 2) / 64 % 2 == 0:  # check for G1 points
+        elif (lengthy - 2) / 64 % 2 == 0:  # Points in G1
             print(" G1 Point", x)
             for j in range(floor((lengthy - 2) / 64)):
                 number = web3.toInt(hexstr=data[2 + (64 * j):2 + (64 * (j + 1))])

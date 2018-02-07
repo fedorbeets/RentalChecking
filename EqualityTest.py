@@ -39,7 +39,7 @@ def setup(n, alpha=0, gamma=0, beta=0):  # optional rng determination for testin
             gammas.append(rand.randint(1, pairing.curve_order))
             # Key space amount of random numbers
             beta_x = []
-            for __ in range(math.ceil(math.log(MESSAGE_SPACE, 2))):
+            for __ in range(int(math.ceil(math.log(MESSAGE_SPACE, 2)))):
                 beta_x.append(rand.randint(1, pairing.curve_order))
             betas.append(beta_x)
 
@@ -50,8 +50,7 @@ def setup(n, alpha=0, gamma=0, beta=0):  # optional rng determination for testin
 
 
 def single_setup(alpha=0, gamma=0, beta=0):
-    msk = {}  # a part of the master secret key
-    chck = {}  # a single checking key
+    msk, chck = {}, {}  # a part of the master secret key, single checking key
 
     msk['alpha_multiplied'] = multiply(pairing.G2, alpha)  # alpha_x * G2
     msk['beta'] = beta
@@ -61,6 +60,7 @@ def single_setup(alpha=0, gamma=0, beta=0):
     chck['beta'] = beta
     chck['gamma_x'] = gamma
     return msk, chck
+
 
 # Takes a list of master keys and a list of rule requirements and outputs an encrypted token that
 # check results are to be matched against
@@ -85,8 +85,7 @@ def gen_token(msks, rule, n, u=0):
 
 
 def single_token_fun(msk, rule, u):
-    single_token = {}
-    single_token['u_multiplied'] = multiply(pairing.G2, u)
+    single_token = {'u_multiplied': multiply(pairing.G2, u)}
 
     exponent = (prp(msk['beta'], rule) * u) % pairing.curve_order
     single_token['alpha_mul_g2_mul_prp'] = multiply(msk['alpha_multiplied'], exponent)
@@ -166,19 +165,20 @@ def test_routine():
     print("Setup")
     master_keys, check_keys = setup(5)
     print("GenToken")
-    test_token = gen_token(master_keys, [3,3,3,3,3], 5)
+    test_token = gen_token(master_keys, [3, 3, 3, 3, 3], 5)
     print("encrypt checks")
-    identify = 5
-    check1 = encrypt(check_keys[0], identify, 3)
-    check2 = encrypt(check_keys[1], identify, 3)
-    check3 = encrypt(check_keys[2], identify, 3)
-    check4 = encrypt(check_keys[3], identify, 3)
-    check5 = encrypt(check_keys[4], identify, 3)
+    identifier = 5
+    check1 = encrypt(check_keys[0], identifier, 3)
+    check2 = encrypt(check_keys[1], identifier, 3)
+    check3 = encrypt(check_keys[2], identifier, 3)
+    check4 = encrypt(check_keys[3], identifier, 3)
+    check5 = encrypt(check_keys[4], identifier, 3)
     print("Check")
     result = test(test_token, 5, check1, check2, check3, check4, check5)
     print("Token = check:    ", result)
 
 
-# test_routine()
-# add e.g. sort='cumulative' to sort the output
-cProfile.run('test_routine()', sort='cumulative')
+if __name__ == "__main__":
+    test_routine()
+    # add e.g. sort='cumulative' to sort the output
+    # cProfile.run('test_routine()', sort='cumulative')

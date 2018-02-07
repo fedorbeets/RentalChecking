@@ -36,49 +36,71 @@ contract pairing_check {
         return "Return Value";
     }
 
+    function testPairing2() public returns (bool){
+        Pairing.G2Point memory fiveTimesP2 = Pairing.G2Point(
+			[4540444681147253467785307942530223364530218361853237193970751657229138047649, 20954117799226682825035885491234530437475518021362091509513177301640194298072],
+			[11631839690097995216017572651900167465857396346217730511548857041925508482915, 21508930868448350162258892668132814424284302804699005394342512102884055673846]
+		);
+		// The prime p in the base field F_p for G1
+		uint p = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
+		Pairing.G1Point[] memory g1points = new Pairing.G1Point[](2);
+		Pairing.G2Point[] memory g2points = new Pairing.G2Point[](2);
+// 			// check e(5 P1, P2)e(-P1, 5 P2) == 1
+		g1points[0] = Pairing.mul(Pairing.P1(), 5);
+		g1points[1] = Pairing.P1();
+		g1points[1].Y = p - g1points[1].Y;
+		g2points[0] = Pairing.P2();
+		g2points[1] = fiveTimesP2;
+		if (!Pairing.pairing(g1points, g2points))
+			return false;
+		// check e(P1, P2)e(-P1, P2) == 0
+		g1points[0] = Pairing.P1();
+		g1points[1] = Pairing.negate(Pairing.P1());
+		g2points[0] = Pairing.P2();
+		g2points[1] = Pairing.P2();
+		if (!Pairing.pairing(g1points, g2points))
+			return false;
+        return true;
+    }
+
 
     // To test for equality:
     // First N points must be "left side of equation"
     // Next N+1 points must be "right side of equation"
     function test_simple(uint[] g1points_x, uint[] g1points_y,
-        uint[] g2_points1_x, uint[] g2_points2_x, uint[] g2_points1_y, uint[] g2_points2_y
+        uint[] g2_x_i, uint[] g2_x_r, uint[] g2_y_i, uint[] g2_y_r
         ) public returns (bool){
             //Must have an equal amount of points in G1,G2
-            require(g1points_x.length == g1points_y.length && g2_points1_x.length == g2_points1_y.length
-                && g2_points1_x.length == g2_points2_x.length && g2_points1_x.length == g2_points2_y.length
-                && g1points_x.length == g2_points1_x.length);
+            require(g1points_x.length == g1points_y.length && g2_x_i.length == g2_y_i.length
+                && g2_x_i.length == g2_x_r.length && g2_x_i.length == g2_y_r.length
+                && g1points_x.length == g2_x_i.length);
 
 
             // Container for all points to be paired
             Pairing.G1Point[] memory pointsG1 = new Pairing.G1Point[](g1points_x.length);
             Pairing.G2Point[] memory pointsG2 = new Pairing.G2Point[](g1points_x.length);
+
+            //uint[2] memory g2_x_ir;
+            //uint[2] memory g2_y_ir;
             //Stitch points together from uints
             for(uint8 i=0; i< g1points_x.length; i++){
-                // Negate the second part of the equation so that the pairing function returns true IFF the 2 parts are equal
-                Integer(i);
 
-                if(i >= (g1points_x.length/2)){
-                    pointsG1[i] = Pairing.negate(Pairing.G1Point(g1points_x[i], g1points_y[i]));
-                } else {
-                    pointsG1[i] = Pairing.G1Point(g1points_x[i], g1points_y[i]);
-                }
+                //Assume negation has been done off-chain
+                pointsG1[i] = Pairing.G1Point(g1points_x[i], g1points_y[i]);
 
-                //Can't directly put distinct values into a G2Point, need to create arrays first
-                uint[2] memory g2_x_points;
-                g2_x_points[0] = g2_points1_x[i];
-                g2_x_points[1] = g2_points2_x[i];
+                //g2_x_ir[0] = g2_x_i[i];
+                //g2_x_ir[1] = g2_x_r[i];
 
-                uint[2] memory g2_y_points;
-                g2_y_points[0] = g2_points1_y[i];
-                g2_y_points[1] = g2_points2_y[i];
-
-                pointsG2[i] = Pairing.G2Point(g2_x_points,g2_y_points);
+                //g2_y_ir[0] = g2_y_i[i];
+                //g2_y_ir[1] = g2_y_r[i];
+                // If you make points out of arrays in memory, then anytime you change that array to allocate
+                // a new point, all of your old points change as well.
+                pointsG2[i] = Pairing.G2Point([g2_x_i[i], g2_x_r[i]],[g2_y_i[i],g2_y_r[i]]);
 
                 //Log points as events
-                Points(pointsG1[i].X, pointsG1[i].Y);
-                PointG2(pointsG2[i].X[0], pointsG2[i].X[1], pointsG2[i].Y[0], pointsG2[i].Y[1]);
+                //Points(pointsG1[i].X, pointsG1[i].Y);
+                //PointG2(pointsG2[i].X[0], pointsG2[i].X[1], pointsG2[i].Y[0], pointsG2[i].Y[1]);
             }
-
             //Contract fails to execute transaction when pairing instruction is included.
             // Possibly runs out of gas
             // May also just be throwing an exception
@@ -94,9 +116,9 @@ contract pairing_check {
             return result;
 
         }
-    
-}
 
+}
+// From https://gist.github.com/chriseth/f9be9d9391efc5beb9704255a8e2989d
 // This file is MIT Licensed.
 //
 // Copyright 2017 Christian Reitwiessner
@@ -105,6 +127,13 @@ contract pairing_check {
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 library Pairing {
+
+    event PointG1(uint X,
+		uint Y);
+
+    event PointG2(uint[2] X,
+		uint[2] Y);
+
 	struct G1Point {
 		uint X;
 		uint Y;
@@ -182,6 +211,8 @@ library Pairing {
 			input[i * 6 + 3] = p2[i].X[1];
 			input[i * 6 + 4] = p2[i].Y[0];
 			input[i * 6 + 5] = p2[i].Y[1];
+			PointG1(p1[i].X, p1[i].Y);
+			PointG2(p2[i].X, p2[i].Y);
 		}
 		uint[1] memory out;
 		bool success;
