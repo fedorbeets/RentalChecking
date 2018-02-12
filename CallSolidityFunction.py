@@ -8,24 +8,9 @@ from solc import compile_files
 from math import floor
 import time
 import eth_utils
-from ExamineTransLogs import examineTransLogs
+from ExamineTransLogs import examine_trans_logs
 import EqualityTest
 import ecpairing.ecpairing as whitebox
-import random
-
-# There is no cost or delay for reading the state of the blockchain, as this is held on our node
-# port 8545 for geth
-# port 7545 for ganache/testrpc - simulated ethereum blockchain
-web3 = Web3(HTTPProvider('http://localhost:7545'))
-
-# address no pairings: 0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4
-# address with pairing: 0xFB88dE099e13c3ED21F80a7a1E49f8CAEcF10df6
-contractAddr = eth_utils.to_checksum_address('0xF328c11c4dF88d18FcBd30ad38d8B4714F4b33bF')
-
-# need contract code to know what methods can be addressed in contract on blockchain
-compiled = compile_files(["solidity_test_pairing_code.sol"], "--optimized")
-compiledCode = compiled['solidity_test_pairing_code.sol:pairing_check']
-contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
 
 # ORDERING of POINTS:
@@ -78,17 +63,23 @@ def split_g2_points(points):
 
 
 if __name__ == "__main__":
-    # ethereum gives True if both all G1 elements are (0,0) (point at infinity), OR all G2 elements are ([0, 0], [0, 0])
-    # python gives True in ethereum cases and also if pairings sum to [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    # There is no cost or delay for reading the state of the blockchain, as this is held on our node
+    # port 8545 for geth
+    # port 7545 for ganache/testrpc - simulated ethereum blockchain
+    web3 = Web3(HTTPProvider('http://localhost:7545'))
 
-    # hashID = (1, 2)
-    # total = ([1, 0], [1, 0])
-    # Does this pairing work out with python?
-    # A: yes it does, it gives [1,0...,0]
+    # address no pairings: 0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4
+    # address with pairing: 0xFB88dE099e13c3ED21F80a7a1E49f8CAEcF10df6
+    contractAddr = eth_utils.to_checksum_address('0x2467636BEa0F3c2441227eeDBfFaC59f11D54a80')
+
+    # need contract code to know what methods can be addressed in contract on blockchain
+    compiled = compile_files(["solidity_test_pairing_code.sol"], "--optimized")
+    compiledCode = compiled['solidity_test_pairing_code.sol:pairing_check']
+    contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
     if True:
         # Generate values from EqualityTest
-        n = 1
+        n = 3
         master_keys, check_keys = EqualityTest.setup(n)
         test_token = EqualityTest.gen_token(master_keys, [3 for _ in range(n)], n)
 
@@ -151,21 +142,13 @@ if __name__ == "__main__":
         result = whitebox.ecpairing_noconv(points_list)
         print("Pairing Precompile: ", result)
 
-    print("g1x: ", g1points_x)
-    print(len(g1points_x))
-    print("g1y: ", g1points_y)
-    print("g2xi: ", g2_x_i)
-    print("g2xr: ", g2_x_r)
-    print("g2yi: ", g2_y_i)
-    print("g2yr: ", g2_y_r)
     # make transaction
     # method to be called comes after transact, as a python function call
     if True:
         print("Making transaction")
-        tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 4000000}).test_simple(
+        tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
             g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
 
-        #tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 4000000}).testPairing2()
 
         # block until mined
         print("Waiting till transaction is mined")
@@ -173,12 +156,11 @@ if __name__ == "__main__":
             time.sleep(1)
         transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
         print("Transaction address: ", transaction_addr.hex())
-        examineTransLogs(contractAddr, transaction_addr.hex())
+        examine_trans_logs(contractAddr, transaction_addr.hex())
 
     if False:
-        outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_simple(
+        outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
             g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
-        #outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).testPairing2()
         print("Local sol call: ", outputs)
 
     # Do Pairing by pairing all points and then multiplying the results together

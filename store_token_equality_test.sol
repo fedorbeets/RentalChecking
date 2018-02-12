@@ -1,10 +1,22 @@
 // In remix: compile EqualityTest.sol, not pairing.sol
 pragma solidity ^0.4.19;
 
-contract pairing_check {
+// Input array loop and inline assembly taken from Christian Reitwiessner,
+// from https://gist.github.com/chriseth/f9be9d9391efc5beb9704255a8e2989d
+
+// This file is MIT Licensed.
+//
+// Copyright 2018 Fedor Beets
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+contract pairing_check_token_stored {
 
     event Result(bool result);
-
+    
+    
+    
 //    struct G1Point {
 //		uint X;
 //		uint Y;
@@ -21,6 +33,21 @@ contract pairing_check {
 //                uint pointX2,
 //                uint pointY1,
 //                uint pointY2);
+    // Token part of equality test
+    uint[] private g2_x_i;
+    uint[] private g2_x_r;
+    uint[] private g2_y_i;
+    uint[] private g2_y_r;
+
+    // Instantiate the contract and store the token part of the equations.
+    function pairing_check_token_stored(
+        uint[] _g2_x_i, uint[] _g2_x_r, uint[] _g2_y_i, uint[] _g2_y_r
+        ) public {
+            g2_x_i = _g2_x_i;
+            g2_x_r = _g2_x_r;
+            g2_y_i = _g2_y_i;
+            g2_y_r = _g2_y_r;
+        }
 
 
     // To test for equality:
@@ -29,8 +56,7 @@ contract pairing_check {
     // Must include equal amounts of points in G1 as in G2
     // Assume negation has been done off-chain
     // Requires less than 255 points
-    function test_equality(uint[] g1points_x, uint[] g1points_y,
-        uint[] g2_x_i, uint[] g2_x_r, uint[] g2_y_i, uint[] g2_y_r
+    function test_equality(uint[] g1points_x, uint[] g1points_y
         ) public returns (bool){
             assert(g1points_x.length == g2_x_i.length);
             // Otherwise loop does not terminate
@@ -38,7 +64,7 @@ contract pairing_check {
             //Must have an equal amount of points in G1,G2
 
             //Do pairing, store result in memory and emit as event
-
+            
         /// @return the result of computing the pairing check
 	    /// e(p1[0], p2[0]) *  .... * e(p1[n], p2[n]) == 1
 	    /// For example pairing([P1(), P1().negate()], [P2(), P2()]) should
@@ -67,17 +93,12 @@ contract pairing_check {
 		}
 		require(success);
 		// Re-use success boolean
-		success =  out[0] != 0;
+		success =  out[0] != 0; 
         Result(success); //emit event
         return success;
         }
-
+        
 
 }
-// From https://gist.github.com/chriseth/f9be9d9391efc5beb9704255a8e2989d
-// This file is MIT Licensed.
-//
-// Copyright 2017 Christian Reitwiessner
-// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+

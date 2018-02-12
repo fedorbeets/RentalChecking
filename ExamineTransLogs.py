@@ -3,7 +3,7 @@ from solc import compile_files
 from math import floor
 import eth_utils
 
-def examineTransLogs(contractAddr, transaction_addr):
+def examine_trans_logs(contractAddr, transaction_addr):
     print("Transaction logs:")
     # port 8545 for geth
     # port 7545 for ganache/testrpc - simulated ethereum blockchain
@@ -24,8 +24,8 @@ def examineTransLogs(contractAddr, transaction_addr):
     # multiple uint's are encoded as follows: discard the first 2 hex chars (the 0x), then 64 hex chars consequetively per uint.
     # decode: web3.toInt(hexstr=log_entry0[2:66]
     trans_receipt = web3.eth.getTransactionReceipt(transaction_addr)
-    print(" Success: ", trans_receipt['status'])
-    print(" Gas used: ", trans_receipt['cumulativeGasUsed'])
+    print(" Success:   ", trans_receipt['status'])
+    print(" Gas usage: ", trans_receipt['cumulativeGasUsed'])
 
     for x in range(len(trans_receipt['logs'])):
         data = trans_receipt['logs'][x]['data']
@@ -46,5 +46,5 @@ def examineTransLogs(contractAddr, transaction_addr):
             print(" data: ", trans_receipt['logs'][x]['data'])
 
 # Code not to be called upon import
-if __name__=="__main__":
-    examineTransLogs('0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0', 0xecb527d25b7fea92c37100a047c0070838c047934381656455bc597c46ebb02a)
+if __name__ == "__main__":
+    examine_trans_logs('0x8CdaF0CD259887258Bc13a92C0a6dA92698644C0', 0xc252970bbc3678e89765f0e1b792351e4badc828aa80bb797ebe163df647d6b7)
