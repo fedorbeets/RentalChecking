@@ -13,9 +13,10 @@ from web3.contract import ConciseContract
 # --optimize-runs 20000 or 1 seems to do nothing
 # contract_name should be in the file
 # formatted like: file.sol , file.sol:name
-def deploy_contract(file, contract_name, args=None):
+def deploy_contract(file, contract_name, args=None, verbose=True):
     compiled = compile_files([file], "--optimized ")  # compile from file
     compiledCode = compiled[contract_name]['bin']
+    verboseprint = print if verbose else lambda *a, **k: None
 
     # Initiate connection to ethereum node
     #   Requires a node running with an RPC connection available at port 8545
@@ -26,9 +27,9 @@ def deploy_contract(file, contract_name, args=None):
                                  bytecode=compiledCode)
 
     # Get transaction hash from deployed contract
-    tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 3000000}, args=args)
+    tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 6000000}, args=args)
 
-    print("Transaction hash: ", tx_hash.hex())
+    verboseprint("Transaction hash: ", tx_hash.hex())
 
     # Get tx receipt to get contract address, wait till block is mined
     while web3.eth.getTransactionReceipt(tx_hash) is None:
@@ -37,8 +38,8 @@ def deploy_contract(file, contract_name, args=None):
     tx_receipt = web3.eth.getTransactionReceipt(tx_hash)
     contract_address = tx_receipt['contractAddress']
 
-    print("Contract address: ", contract_address)
-    return contract_address
+    verboseprint("Contract address: ", contract_address)
+    return contract_address, tx_hash.hex()
 
 
 if __name__ == "__main__":

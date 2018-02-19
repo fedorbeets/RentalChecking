@@ -1,4 +1,7 @@
 # slowPairing only uses X,Y points instead of X,Y,Z points, which we need here
+import random
+from statistics import mean
+
 import py_ecc.bn128.bn128_pairing as slow_pairing
 from py_ecc.bn128.bn128_pairing import FQ2, FQ
 from py_ecc.optimized_bn128.optimized_pairing import normalize
@@ -8,7 +11,9 @@ from solc import compile_files
 from math import floor
 import time
 import eth_utils
-from ExamineTransLogs import examine_trans_logs
+
+from DeployContract import deploy_contract
+from ExamineTransLogs import examine_trans_logs, gas_usage
 import EqualityTest
 import ecpairing.ecpairing as whitebox
 
@@ -68,23 +73,32 @@ if __name__ == "__main__":
     # port 7545 for ganache/testrpc - simulated ethereum blockchain
     web3 = Web3(HTTPProvider('http://localhost:7545'))
 
+    contract_file = "solidity_test_pairing_code.sol"
+    contract_name = "solidity_test_pairing_code.sol:pairing_check"
+
+    (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, verbose=False)
+    print("Gas used to deploy contract: ", gas_usage(contract_trans, web3))
     # address no pairings: 0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4
     # address with pairing: 0xFB88dE099e13c3ED21F80a7a1E49f8CAEcF10df6
-    contractAddr = eth_utils.to_checksum_address('0x2467636BEa0F3c2441227eeDBfFaC59f11D54a80')
 
     # need contract code to know what methods can be addressed in contract on blockchain
-    compiled = compile_files(["solidity_test_pairing_code.sol"], "--optimized")
-    compiledCode = compiled['solidity_test_pairing_code.sol:pairing_check']
+    compiled = compile_files([contract_file], "--optimized")
+    compiledCode = compiled[contract_name]
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
-    if True:
+    verbose = False
+    verbose_print = print if verbose else lambda *a, **k: None
+    #  1, 2, 3, 4, 5, 10, 15, 20
+    print("Number of checks, gas usage")
+    for n in [10]:
         # Generate values from EqualityTest
-        n = 3
         master_keys, check_keys = EqualityTest.setup(n)
-        test_token = EqualityTest.gen_token(master_keys, [3 for _ in range(n)], n)
+        rand = random.SystemRandom()
+        token_accepts = [rand.randint(1, 30) for _ in range(n)]
+        test_token = EqualityTest.gen_token(master_keys, token_accepts, n)
 
         identifier = 5
-        checks = [EqualityTest.encrypt(check_keys[x], identifier, 3) for x in range(n)]
+        checks = [EqualityTest.encrypt(check_keys[x], identifier, token_accepts[x]) for x in range(n)]
         listG1 = []
         listG2 = []
 
@@ -104,81 +118,70 @@ if __name__ == "__main__":
         for x in range(len(listG1)):
             if x >= (len(listG1) // 2):
                 listG1[x] = fast_pairing.neg(listG1[x])
-        print("Created", (n*2)+1, "pairs of points")
+        verbose_print("Created", (n * 2) + 1, "pairs of points")
 
-    if False:
-        G1 = fast_pairing.G1
-        G2 = fast_pairing.G2
-        G1_1 = fast_pairing.multiply(G1, 5 % fast_pairing.curve_order)
-        G1_2 = fast_pairing.multiply(G1, 1 % fast_pairing.curve_order)
-        #G1_3 = fast_pairing.multiply(G1, 1 % fast_pairing.curve_order)
+        # tests if all points on curve
+        if True:
+            for i in range(len(listG1)):
+                assert (fast_pairing.is_on_curve(listG1[i], fast_pairing.b))
+                assert (fast_pairing.is_on_curve(listG2[i], fast_pairing.b2))
 
-        G2_1 = fast_pairing.multiply(G2, 1 % fast_pairing.curve_order)
-        G2_2 = fast_pairing.multiply(G2, -5 % fast_pairing.curve_order)
-        #G2_3 = fast_pairing.multiply(G2, -2 % fast_pairing.curve_order)
+        # solidity interface type conversion:
+        # Convert points so they can be sent to blockchain
+        listG1 = list(map(fast_pairing.normalize, listG1))
+        listG2 = list(map(fast_pairing.normalize, listG2))
 
-        listG1 = [G1_1, G1_2]
-        listG2 = [G2_1, G2_2]
+        g1points_x, g1points_y = split_g1_points(listG1)
+        g2_x_i, g2_x_r, g2_y_i, g2_y_r = split_g2_points(listG2)
 
-    # tests if all points on curve
-    if True:
-        for i in range(len(listG1)):
-            assert (fast_pairing.is_on_curve(listG1[i], fast_pairing.b))
-            assert (fast_pairing.is_on_curve(listG2[i], fast_pairing.b2))
+        # Call and print result of whitebox precompile
+        if False:
+            points_list = [None] * (len(listG1) + len(listG2))  # make empty list of correct size
+            points_list[::2] = listG1
+            points_list[1::2] = listG2
+            result = whitebox.ecpairing_noconv(points_list)
+            print("Pairing Precompile: ", result)
 
-    # solidity interface type conversion:
-    # Convert points so they can be sent to blockchain
-    listG1 = list(map(fast_pairing.normalize, listG1))
-    listG2 = list(map(fast_pairing.normalize, listG2))
+        # make transaction
+        # method to be called comes after transact, as a python function call
+        iterations = 5
+        gas_used = []
+        for i in range(iterations):
+            verbose_print("Making transaction")
+            tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 5000000}).test_equality(
+                g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
 
-    g1points_x, g1points_y = split_g1_points(listG1)
-    g2_x_i, g2_x_r, g2_y_i, g2_y_r = split_g2_points(listG2)
+            # block until mined
+            verbose_print("Waiting till transaction is mined")
+            while web3.eth.getTransaction(tx_hash)['blockNumber'] is None:
+                time.sleep(1)
+            transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
+            verbose_print("Transaction address: ", transaction_addr.hex())
+            # examine_trans_logs(contractAddr, transaction_addr.hex())
+            gas_used.append(gas_usage(transaction_addr.hex(), web3))
+        print(n, " ,", floor(mean(gas_used)))
 
-    # Call and print result of whitebox precompile
-    if False:
-        points_list = [None] * (len(listG1) + len(listG2))  # make empty list of correct size
-        points_list[::2] = listG1
-        points_list[1::2] = listG2
-        result = whitebox.ecpairing_noconv(points_list)
-        print("Pairing Precompile: ", result)
+        if False:
+            outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
+                g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
+            print("Local sol call: ", outputs)
 
-    # make transaction
-    # method to be called comes after transact, as a python function call
-    if True:
-        print("Making transaction")
-        tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
-            g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
-
-
-        # block until mined
-        print("Waiting till transaction is mined")
-        while web3.eth.getTransaction(tx_hash)['blockNumber'] is None:
-            time.sleep(1)
-        transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
-        print("Transaction address: ", transaction_addr.hex())
-        examine_trans_logs(contractAddr, transaction_addr.hex())
-
-    if False:
-        outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
-            g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
-        print("Local sol call: ", outputs)
-
-    # Do Pairing by pairing all points and then multiplying the results together
-    if False:
-        print("Pairing in python, total", len(g1points_x), "pairings")
-        for x in range(len(g1points_x)):
-            if x >= floor(len(g1points_x) / 2):  # negate second half of points/second part equation
-                g1_point = slow_pairing.neg((FQ(g1points_x[x]), FQ(g1points_y[x])))
-            else:
-                g1_point = (FQ(g1points_x[x]), FQ(g1points_y[x]))
-            g2_point = (FQ2([g2_x_r[x], g2_x_i[x]]), FQ2([g2_y_r[x], g2_y_i[x]]))
-            pair = slow_pairing.pairing(g2_point, g1_point)
-            try:  # make sure it's defined without starting with a slowPairing.FQ12.one()
-                pairing_total = pairing_total * pair
-            except NameError:
-                pairing_total = pair
-            print("Completed pairing ", x)
-        print("Pairing tot py sum: ", pairing_total)
-        pairing_total *= slow_pairing.FQ12.one()
-    # There is a no difference between setting pairing_total to FQ12.one() first or assigning the variable only
-    # in the first loop.
+        # Do Pairing by pairing all points and then multiplying the results together
+        if False:
+            print("Pairing in python, total", len(g1points_x), "pairings")
+            for x in range(len(g1points_x)):
+                if x >= floor(len(g1points_x) / 2):  # negate second half of points/second part equation
+                    g1_point = slow_pairing.neg((FQ(g1points_x[x]), FQ(g1points_y[x])))
+                else:
+                    g1_point = (FQ(g1points_x[x]), FQ(g1points_y[x]))
+                g2_point = (FQ2([g2_x_r[x], g2_x_i[x]]), FQ2([g2_y_r[x], g2_y_i[x]]))
+                pair = slow_pairing.pairing(g2_point, g1_point)
+                try:  # make sure it's defined without starting with a slowPairing.FQ12.one()
+                    pairing_total = pairing_total * pair
+                except NameError:
+                    pairing_total = pair
+                print("Completed pairing ", x)
+            print("Pairing tot py sum: ", pairing_total)
+            pairing_total *= slow_pairing.FQ12.one()
+        # There is a no difference between setting pairing_total to FQ12.one() first or assigning the variable only
+        # in the first loop.
