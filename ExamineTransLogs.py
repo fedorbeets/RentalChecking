@@ -28,6 +28,7 @@ def examine_trans_logs(transaction_addr):
     print("Input non-zero bytes: ", non_zero_bytes)
     print(" Success:   ", trans_receipt['status'])
     print(" Gas usage: ", trans_receipt['cumulativeGasUsed'])
+    print(trans)
 
     for x in range(len(trans_receipt['logs'])):
         data = trans_receipt['logs'][x]['data']
@@ -55,4 +56,4 @@ def gas_usage(transaction_addr, web3):
 
 # Code not to be called upon import
 if __name__ == "__main__":
-    examine_trans_logs(0x1ac568de7697938c65a0cf8ba6b6e2aa1a8f80a7b9845b721a8b32ace7041f01)
+    examine_trans_logs(0x772c58a7393d821786792be884dbb50a78fd5dca10d84d60ede35a96ec87f70b)

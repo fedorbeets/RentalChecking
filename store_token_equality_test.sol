@@ -100,5 +100,3 @@ contract pairing_check_token_stored {
         
 
 }
-
-

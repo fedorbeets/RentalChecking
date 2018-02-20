@@ -13,23 +13,20 @@ from web3.contract import ConciseContract
 # --optimize-runs 20000 or 1 seems to do nothing
 # contract_name should be in the file
 # formatted like: file.sol , file.sol:name
-def deploy_contract(file, contract_name, args=None, verbose=True):
+def deploy_contract(file, contract_name, web3, args=None, verbose=True):
     compiled = compile_files([file], "--optimized ")  # compile from file
     compiledCode = compiled[contract_name]['bin']
     verboseprint = print if verbose else lambda *a, **k: None
 
-    # Initiate connection to ethereum node
-    #   Requires a node running with an RPC connection available at port 8545
-    web3 = Web3(HTTPProvider('http://localhost:7545'))
 
     # Instantiate and deploy contract
     contract = web3.eth.contract(abi=compiled[contract_name]['abi'],
                                  bytecode=compiledCode)
 
     # Get transaction hash from deployed contract
-    tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 6000000}, args=args)
-
+    tx_hash = contract.deploy(transaction={'from': web3.eth.accounts[0], 'gas': 4000000}, args=args)
     verboseprint("Transaction hash: ", tx_hash.hex())
+
 
     # Get tx receipt to get contract address, wait till block is mined
     while web3.eth.getTransactionReceipt(tx_hash) is None:
@@ -43,5 +40,6 @@ def deploy_contract(file, contract_name, args=None, verbose=True):
 
 
 if __name__ == "__main__":
-    deploy_contract("solidity_test_pairing_code.sol", 'solidity_test_pairing_code.sol:pairing_check')
+    web3 = Web3(HTTPProvider('http://localhost:8545'))
+    deploy_contract("solidity_test_pairing_code.sol", 'solidity_test_pairing_code.sol:pairing_check', web3)
     # deploy_contract("store_token_equality_test.sol", "store_token_equality_test.sol:pairing_check_token_stored")

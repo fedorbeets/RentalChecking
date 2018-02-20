@@ -34,13 +34,15 @@ for n in [10]:
 
     args = [g2_x_i, g2_x_r, g2_y_i, g2_y_r]
     # Deploy contract
+    # port 8545 for geth
+    # port 7545 for ganache/testrpc - simulated ethereum blockchain
     web3 = Web3(HTTPProvider('http://localhost:7545'))
     contract_file = "store_token_equality_test.sol"
     contract_name = "store_token_equality_test.sol:pairing_check_token_stored"
 
     # todo: contract deployment cost is not constant but have not averaged it over multiple runs yet
     (contractAddr, contract_trans) = deploy_contract(contract_file,
-                                   contract_name, args, False)
+                                   contract_name, web3, args, True)
     gas_use_deploy = gas_usage(contract_trans, web3)
     print("Gas used to deploy n=", n, "contract: ", gas_use_deploy)
 
