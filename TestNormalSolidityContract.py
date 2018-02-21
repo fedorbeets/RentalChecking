@@ -10,11 +10,9 @@ from solc import compile_files
 from math import floor
 import time
 from DeployContract import deploy_contract
-from ExamineTransLogs import examine_trans_logs, gas_usage
+from ExamineTransLogs import gas_usage
 from conversion_utility import split_g2_points, split_g1_points
 import EqualityTest
-import ecpairing.ecpairing as whitebox
-
 
 if __name__ == "__main__":
     # There is no cost or delay for reading the state of the blockchain, as this is held on our node
@@ -82,14 +80,6 @@ if __name__ == "__main__":
 
         g1points_x, g1points_y = split_g1_points(listG1)
         g2_x_i, g2_x_r, g2_y_i, g2_y_r = split_g2_points(listG2)
-
-        # Call and print result of whitebox precompile
-        if False:
-            points_list = [None] * (len(listG1) + len(listG2))  # make empty list of correct size
-            points_list[::2] = listG1
-            points_list[1::2] = listG2
-            result = whitebox.ecpairing_noconv(points_list)
-            print("Pairing Precompile: ", result)
 
         # make transaction
         # method to be called comes after transact, as a python function call

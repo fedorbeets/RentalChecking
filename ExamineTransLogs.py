@@ -1,7 +1,6 @@
 from web3 import Web3, HTTPProvider
-from solc import compile_files
 from math import floor
-import eth_utils
+
 
 def examine_trans_logs(transaction_addr):
     print("Transaction logs:")
@@ -12,7 +11,8 @@ def examine_trans_logs(transaction_addr):
     # Transaction to be examined
     # You must change this to examine a different transaction
     # One entry in the 'logs' array per event
-    # multiple uint's are encoded as follows: discard the first 2 hex chars (the 0x), then 64 hex chars consequetively per uint.
+    # multiple uint's are encoded as follows: discard the first 2 hex chars (the 0x),
+    # then 64 hex chars consequetively per uint.
     # decode: web3.toInt(hexstr=log_entry0[2:66]
     trans_receipt = web3.eth.getTransactionReceipt(transaction_addr)
     trans = web3.eth.getTransaction(transaction_addr)
@@ -20,7 +20,7 @@ def examine_trans_logs(transaction_addr):
     zero_bytes = 0
     non_zero_bytes = 0
     for i in range(2, len(trans['input']), 8):
-        if input_bits[i:i+8] == '00000000':
+        if input_bits[i:i + 8] == '00000000':
             zero_bytes += 1
         else:
             non_zero_bytes += 1
@@ -53,6 +53,7 @@ def examine_trans_logs(transaction_addr):
 def gas_usage(transaction_addr, web3):
     trans_receipt = web3.eth.getTransactionReceipt(transaction_addr)
     return trans_receipt['cumulativeGasUsed']
+
 
 # Code not to be called upon import
 if __name__ == "__main__":

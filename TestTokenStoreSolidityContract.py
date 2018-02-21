@@ -5,7 +5,7 @@ import time
 from web3 import Web3, HTTPProvider
 from solc import compile_files
 from DeployContract import deploy_contract
-from TestNormalSolidityContract import split_g1_points,split_g2_points
+from conversion_utility import split_g1_points, split_g2_points
 from ExamineTransLogs import gas_usage
 from statistics import mean
 from math import floor
@@ -40,15 +40,13 @@ for n in [1, 2, 3, 4, 5, 10, 15, 20]:
     contract_name = "store_token_equality_test.sol:pairing_check_token_stored"
 
     # todo: contract deployment cost is not constant but have not averaged it over multiple runs yet
-    (contractAddr, contract_trans) = deploy_contract(contract_file,
-                                   contract_name, web3, args, True)
+    (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, web3, args, True)
     gas_use_deploy = gas_usage(contract_trans, web3)
     print("Gas used to deploy n=", n, "contract: ", gas_use_deploy)
 
     compiled = compile_files([contract_file], "--optimized")
     compiledCode = compiled[contract_name]
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
-
 
     # test contract gas usage
     repetitions = 5

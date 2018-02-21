@@ -12,7 +12,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='rental_checking',
-    version='1.0.0',
+    version='1.0.1',
     description='Checking encrypted equalities to provide privacy preserving rental checking',
     author='Fedor Beets',
     author_email='fedorbeets+rental@protonmail.ch',

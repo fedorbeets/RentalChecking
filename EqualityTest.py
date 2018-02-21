@@ -1,13 +1,11 @@
 import py_ecc.optimized_bn128.optimized_pairing as pairing
 from py_ecc.optimized_bn128.optimized_pairing import multiply, add
-from py_ecc.optimized_bn128.optimized_pairing import normalize1, normalize
 import random
 import math
-import cProfile
 from multiprocessing import Pool
 from functools import reduce
 import operator
-
+# import cProfile
 
 # Picking key_space as all numbers 0...pairing.curve_order, which seems like a suitably large number.
 key_space = pairing.curve_order
