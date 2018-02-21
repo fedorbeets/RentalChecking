@@ -1,5 +1,5 @@
 import random
-import CallSolidityFunction, ExamineTransLogs, EqualityTest
+import EqualityTest
 import py_ecc.optimized_bn128 as fast_pairing
 import time
 from web3 import Web3, HTTPProvider, IPCProvider

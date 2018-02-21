@@ -10,7 +10,6 @@ from web3 import Web3, HTTPProvider, IPCProvider
 from solc import compile_files
 from math import floor
 import time
-import eth_utils
 
 from DeployContract import deploy_contract
 from ExamineTransLogs import examine_trans_logs, gas_usage
