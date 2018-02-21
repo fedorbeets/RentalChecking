@@ -2,16 +2,15 @@ import random
 import EqualityTest
 import py_ecc.optimized_bn128 as fast_pairing
 import time
-from web3 import Web3, HTTPProvider, IPCProvider
+from web3 import Web3, HTTPProvider
 from solc import compile_files
 from DeployContract import deploy_contract
-from CallSolidityFunction import split_g1_points,split_g2_points
+from TestNormalSolidityContract import split_g1_points,split_g2_points
 from ExamineTransLogs import gas_usage
 from statistics import mean
 from math import floor
 
-# 1, 2, 3, 4, 5, 10, 15, 20
-for n in [10]:
+for n in [1, 2, 3, 4, 5, 10, 15, 20]:
     # generate token
     # Generate values from EqualityTest
     master_keys, check_keys = EqualityTest.setup(n)
@@ -52,7 +51,7 @@ for n in [10]:
 
 
     # test contract gas usage
-    repetitions = 1
+    repetitions = 5
     gas_used = []
     for i in range(repetitions):
         # generate g1 points

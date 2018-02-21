@@ -4,66 +4,16 @@ from statistics import mean
 
 import py_ecc.bn128.bn128_pairing as slow_pairing
 from py_ecc.bn128.bn128_pairing import FQ2, FQ
-from py_ecc.optimized_bn128.optimized_pairing import normalize
 import py_ecc.optimized_bn128.optimized_pairing as fast_pairing
-from web3 import Web3, HTTPProvider, IPCProvider
+from web3 import Web3, HTTPProvider
 from solc import compile_files
 from math import floor
 import time
-
 from DeployContract import deploy_contract
 from ExamineTransLogs import examine_trans_logs, gas_usage
+from conversion_utility import split_g2_points, split_g1_points
 import EqualityTest
 import ecpairing.ecpairing as whitebox
-
-
-# ORDERING of POINTS:
-# Points from python pairing library in G2 are formatted as follows:
-# [X_r,X_i][Y_r,Y_i], with the second set of coordinates (as used by solidity library), presented first in the ordering
-# FQ2 constructor: [g2_x_r, g2_x_i] [g2_y_r, g2_y_i]
-# Solidity pairing library uses: [X_i, X_r] [Y_i, Y_r]
-
-# Everything I write will be formatted as [X_i,X_r][Y_i,Y_r].
-# Where the imaginary component is listed first in the tuple and then the real component.
-#   Except when the points are pulled from python library, they then have to be reformatted
-
-# Takes a point or list of points in G1 and returns X,Y integers split up so they can be put in arrays
-# Converts the ordering of the points from the underlying library ordering to solidity ordering (see above)
-# assumes points have been normalized
-def split_g1_points(points):
-    if isinstance(points, list):
-        x = [x.n for (x, y) in points]
-        y = [y.n for (x, y) in points]
-        return x, y
-    if isinstance(points, tuple):
-        if len(points) == 3:
-            return split_g1_points(normalize(points))
-        elif len(points) == 2:
-            # Cast to int
-            x, y = points
-            return x.n, y.n
-        else:
-            raise TypeError("Expected point in G1")
-
-
-# Takes a point or points in G2 and returns them split over x1, x2, y1, y2 as integers
-def split_g2_points(points):
-    if isinstance(points, list):
-        xi = [x.coeffs[1] for (x, y) in points]
-        xr = [x.coeffs[0] for (x, y) in points]
-        yi = [y.coeffs[1] for (x, y) in points]
-        yr = [y.coeffs[0] for (x, y) in points]
-        # reordering points to our used representation
-        return xi, xr, yi, yr
-    if isinstance(points, tuple):
-        if len(points) == 3:  # point still has x,y,z values from optimized library
-            return split_g2_points(normalize(points))
-        elif len(points) == 2:
-            x, y = points
-            # Reordering points to our representation
-            return x.coeffs[1], x.coeffs[0], y.coeffs[1], y.coeffs[0]
-        else:
-            raise TypeError('Expected point in G2')
 
 
 if __name__ == "__main__":
@@ -89,7 +39,7 @@ if __name__ == "__main__":
     verbose_print = print if verbose else lambda *a, **k: None
     #  1, 2, 3, 4, 5, 10, 15, 20
     print("Number of checks, gas usage")
-    for n in [10]:
+    for n in [1, 2, 3, 4, 5, 10, 15, 20]:
         # Generate values from EqualityTest
         master_keys, check_keys = EqualityTest.setup(n)
         rand = random.SystemRandom()
@@ -143,9 +93,9 @@ if __name__ == "__main__":
 
         # make transaction
         # method to be called comes after transact, as a python function call
-        iterations = 5
+        repetitions = 5
         gas_used = []
-        for i in range(iterations):
+        for i in range(repetitions):
             verbose_print("Making transaction")
             tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 5000000}).test_equality(
                 g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)

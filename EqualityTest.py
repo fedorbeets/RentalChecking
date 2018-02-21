@@ -105,7 +105,6 @@ def encrypt(chck_key, identifier, message, r=0):
     # todo: is multiplication in Z_p just normal multiplication mod p?
     ct_i['hash_ident'] = elliptic_hash(identifier)
     ct_i['r_x_mul'] = multiply(pairing.G1, r_x)
-
     exponent = (prp(chck_key['beta'], message) * r_x) % pairing.curve_order
     g1_exponentiated = multiply(chck_key['alpha_g1'], exponent)
     ident_hash_mul_message = multiply(ct_i['hash_ident'], chck_key['gamma_x'])
