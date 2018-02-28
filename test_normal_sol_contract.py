@@ -9,10 +9,10 @@ from web3 import Web3, HTTPProvider
 from solc import compile_files
 from math import floor
 import time
-from DeployContract import deploy_contract
-from ExamineTransLogs import gas_usage
+from deploy_contractpy import deploy_contract
+from examine_trans_logs import gas_usage
 from conversion_utility import split_g2_points, split_g1_points
-import EqualityTest
+import equality_test
 
 if __name__ == "__main__":
     # There is no cost or delay for reading the state of the blockchain, as this is held on our node
@@ -39,13 +39,13 @@ if __name__ == "__main__":
     print("Number of checks, gas usage")
     for n in [1, 2, 3, 4, 5, 10, 15, 20]:
         # Generate values from EqualityTest
-        master_keys, check_keys = EqualityTest.setup(n)
+        master_keys, check_keys = equality_test.setup(n)
         rand = random.SystemRandom()
         token_accepts = [rand.randint(1, 30) for _ in range(n)]
-        test_token = EqualityTest.gen_token(master_keys, token_accepts, n)
+        test_token = equality_test.gen_token(master_keys, token_accepts, n)
 
         identifier = 5
-        checks = [EqualityTest.encrypt(check_keys[x], identifier, token_accepts[x]) for x in range(n)]
+        checks = [equality_test.encrypt(check_keys[x], identifier, token_accepts[x]) for x in range(n)]
         listG1 = []
         listG2 = []
 

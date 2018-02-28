@@ -1,20 +1,20 @@
 import random
-import EqualityTest
+import equality_test
 import py_ecc.optimized_bn128 as fast_pairing
 import time
 from web3 import Web3, HTTPProvider
 from solc import compile_files
-from DeployContract import deploy_contract
+from deploy_contractpy import deploy_contract
 from conversion_utility import split_g1_points, split_g2_points
-from ExamineTransLogs import gas_usage
+from examine_trans_logs import gas_usage
 from statistics import mean
 from math import floor
 
 for n in [1, 2, 3, 4, 5, 10, 15, 20]:
     # generate token
     # Generate values from EqualityTest
-    master_keys, check_keys = EqualityTest.setup(n)
-    test_token = EqualityTest.gen_token(master_keys, [3 for _ in range(n)], n)
+    master_keys, check_keys = equality_test.setup(n)
+    test_token = equality_test.gen_token(master_keys, [3 for _ in range(n)], n)
 
     listG2 = []
 
@@ -55,7 +55,7 @@ for n in [1, 2, 3, 4, 5, 10, 15, 20]:
         # generate g1 points
         rand = random.SystemRandom()
         identifier = rand.randint(1, fast_pairing.curve_order)
-        checks = [EqualityTest.encrypt(check_keys[x], identifier, 3) for x in range(n)]
+        checks = [equality_test.encrypt(check_keys[x], identifier, 3) for x in range(n)]
         listG1 = []
 
         for x in range(n):
