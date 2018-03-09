@@ -9,8 +9,8 @@ from web3 import Web3, HTTPProvider
 from solc import compile_files
 from math import floor
 import time
-from deploy_contractpy import deploy_contract
-from examine_trans_logs import gas_usage
+from deploy_contract import deploy_contract
+from examine_trans_logs import gas_usage, max_gas_usage
 from conversion_utility import split_g2_points, split_g1_points
 import equality_test
 
@@ -23,7 +23,7 @@ if __name__ == "__main__":
     contract_file = "solidity_test_pairing_code.sol"
     contract_name = "solidity_test_pairing_code.sol:pairing_check"
 
-    (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, verbose=False)
+    (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, web3, verbose=False)
     print("Gas used to deploy contract: ", gas_usage(contract_trans, web3))
     # address no pairings: 0x2C2B9C9a4a25e24B174f26114e8926a9f2128FE4
     # address with pairing: 0xFB88dE099e13c3ED21F80a7a1E49f8CAEcF10df6
@@ -67,12 +67,6 @@ if __name__ == "__main__":
                 listG1[x] = fast_pairing.neg(listG1[x])
         verbose_print("Created", (n * 2) + 1, "pairs of points")
 
-        # tests if all points on curve
-        if True:
-            for i in range(len(listG1)):
-                assert (fast_pairing.is_on_curve(listG1[i], fast_pairing.b))
-                assert (fast_pairing.is_on_curve(listG2[i], fast_pairing.b2))
-
         # solidity interface type conversion:
         # Convert points so they can be sent to blockchain
         listG1 = list(map(fast_pairing.normalize, listG1))
@@ -85,6 +79,7 @@ if __name__ == "__main__":
         # method to be called comes after transact, as a python function call
         repetitions = 5
         gas_used = []
+        gas_used_max = []
         for i in range(repetitions):
             verbose_print("Making transaction")
             tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 5000000}).test_equality(
@@ -98,7 +93,9 @@ if __name__ == "__main__":
             verbose_print("Transaction address: ", transaction_addr.hex())
             # examine_trans_logs(contractAddr, transaction_addr.hex())
             gas_used.append(gas_usage(transaction_addr.hex(), web3))
+            gas_used_max.append(max_gas_usage(transaction_addr.hex(), web3))
         print(n, " ,", floor(mean(gas_used)))
+        print(n, " ,", floor(mean(gas_used_max)), "  maxed")
 
         if False:
             outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
@@ -122,5 +119,3 @@ if __name__ == "__main__":
                 print("Completed pairing ", x)
             print("Pairing tot py sum: ", pairing_total)
             pairing_total *= slow_pairing.FQ12.one()
-        # There is a no difference between setting pairing_total to FQ12.one() first or assigning the variable only
-        # in the first loop.

@@ -4,7 +4,7 @@ import py_ecc.optimized_bn128 as fast_pairing
 import time
 from web3 import Web3, HTTPProvider
 from solc import compile_files
-from deploy_contractpy import deploy_contract
+from deploy_contract import deploy_contract
 from conversion_utility import split_g1_points, split_g2_points
 from examine_trans_logs import gas_usage
 from statistics import mean

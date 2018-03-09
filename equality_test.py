@@ -5,7 +5,7 @@ import math
 from multiprocessing import Pool
 from functools import reduce
 import operator
-# import cProfile
+import cProfile
 
 # Picking key_space as all numbers 0...pairing.curve_order, which seems like a suitably large number.
 key_space = pairing.curve_order
@@ -170,12 +170,14 @@ def test_routine():
     check3 = encrypt(check_keys[2], identifier, 3)
     check4 = encrypt(check_keys[3], identifier, 3)
     check5 = encrypt(check_keys[4], identifier, 3)
-    print("Check")
-    result = test(test_token, 5, check1, check2, check3, check4, check5)
-    print("Token = check:    ", result)
+
+    print(master_keys)
+    #print("Check")
+    #result = test(test_token, 5, check1, check2, check3, check4, check5)
+    #print("Token = check:    ", result)
 
 
 if __name__ == "__main__":
     test_routine()
     # add e.g. sort='cumulative' to sort the output
-    # cProfile.run('test_routine()', sort='cumulative')
+    #cProfile.run('test_routine()')
