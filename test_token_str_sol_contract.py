@@ -10,7 +10,7 @@ from examine_trans_logs import gas_usage
 from statistics import mean
 from math import floor
 
-for n in [1, 2, 3, 4, 5, 10, 15, 20]:
+for n in [20]:
     # generate token
     # Generate values from EqualityTest
     master_keys, check_keys = equality_test.setup(n)
@@ -33,13 +33,11 @@ for n in [1, 2, 3, 4, 5, 10, 15, 20]:
 
     args = [g2_x_i, g2_x_r, g2_y_i, g2_y_r]
     # Deploy contract
-    # port 8545 for geth
-    # port 7545 for ganache/testrpc - simulated ethereum blockchain
-    web3 = Web3(HTTPProvider('http://localhost:7545'))
+    web3 = Web3(HTTPProvider(deploy_contract.URL))
     contract_file = "store_token_equality_test.sol"
     contract_name = "store_token_equality_test.sol:pairing_check_token_stored"
 
-    # todo: contract deployment cost is not constant but have not averaged it over multiple runs yet
+    # TODO; also have to take out zero bytes from points deployed in contract
     (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, web3, args, True)
     gas_use_deploy = gas_usage(contract_trans, web3)
     print("Gas used to deploy n=", n, "contract: ", gas_use_deploy)
@@ -49,7 +47,7 @@ for n in [1, 2, 3, 4, 5, 10, 15, 20]:
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
     # test contract gas usage
-    repetitions = 5
+    repetitions = 1
     gas_used = []
     for i in range(repetitions):
         # generate g1 points

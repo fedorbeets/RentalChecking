@@ -32,6 +32,6 @@ setup(
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     install_requires=['web3',
                       'py_ecc',
-                      'py-solc']
+                      'py-solc', 'requests']
 
 )

@@ -14,11 +14,9 @@ from examine_trans_logs import gas_usage, max_gas_usage
 from conversion_utility import split_g2_points, split_g1_points
 import equality_test
 
+
 if __name__ == "__main__":
-    # There is no cost or delay for reading the state of the blockchain, as this is held on our node
-    # port 8545 for geth
-    # port 7545 for ganache/testrpc - simulated ethereum blockchain
-    web3 = Web3(HTTPProvider('http://localhost:7545'))
+    web3 = Web3(HTTPProvider(deploy_contract.URL))
 
     contract_file = "solidity_test_pairing_code.sol"
     contract_name = "solidity_test_pairing_code.sol:pairing_check"
@@ -33,11 +31,12 @@ if __name__ == "__main__":
     compiledCode = compiled[contract_name]
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
-    verbose = False
+    verbose = True
     verbose_print = print if verbose else lambda *a, **k: None
     #  1, 2, 3, 4, 5, 10, 15, 20
-    print("Number of checks, gas usage")
-    for n in [1, 2, 3, 4, 5, 10, 15, 20]:
+    print("Number of checks, gas usage (zero-bytes compensated)")
+    # [1, 2, 3, 4, 5, 10, 15, 20]
+    for n in [5]:
         # Generate values from EqualityTest
         master_keys, check_keys = equality_test.setup(n)
         rand = random.SystemRandom()
@@ -77,25 +76,20 @@ if __name__ == "__main__":
 
         # make transaction
         # method to be called comes after transact, as a python function call
-        repetitions = 5
-        gas_used = []
-        gas_used_max = []
-        for i in range(repetitions):
-            verbose_print("Making transaction")
-            tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 5000000}).test_equality(
+        verbose_print("Making transaction")
+        tx_hash = contract_instance.transact({'from': web3.eth.accounts[0], 'gas': 5000000}).test_equality(
                 g1points_x, g1points_y, g2_x_i, g2_x_r, g2_y_i, g2_y_r)
 
-            # block until mined
-            verbose_print("Waiting till transaction is mined")
-            while web3.eth.getTransaction(tx_hash)['blockNumber'] is None:
-                time.sleep(1)
-            transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
-            verbose_print("Transaction address: ", transaction_addr.hex())
-            # examine_trans_logs(contractAddr, transaction_addr.hex())
-            gas_used.append(gas_usage(transaction_addr.hex(), web3))
-            gas_used_max.append(max_gas_usage(transaction_addr.hex(), web3))
-        print(n, " ,", floor(mean(gas_used)))
-        print(n, " ,", floor(mean(gas_used_max)), "  maxed")
+        # block until mined
+        verbose_print("Waiting till transaction is mined")
+        while web3.eth.getTransaction(tx_hash)['blockNumber'] is None:
+            time.sleep(1)
+        transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
+        verbose_print("Transaction address: ", transaction_addr.hex())
+        # examine_trans_logs(contractAddr, transaction_addr.hex())
+        gas_used = gas_usage(transaction_addr.hex(), web3)
+        gas_used_maxed = max_gas_usage(transaction_addr.hex(), web3)
+        print(n, " ,", gas_used_maxed)
 
         if False:
             outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(
