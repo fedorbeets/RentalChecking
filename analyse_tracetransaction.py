@@ -2,11 +2,35 @@ import json
 import requests
 import deploy_contract
 import examine_trans_logs
+from operator import itemgetter
+from collections import defaultdict
 from web3 import Web3, HTTPProvider
 
 
+def gas_cost_opcodes(opcodes):
+    sum_gas = 0
+    for index, call in enumerate(opcodes):
+        sum_gas += gas_opcode(index, opcodes)
+    return sum_gas
 
 
+# returns the gas cost of a opcode
+def gas_opcode(index, opcodes):
+    if index != len(opcodes) -1:
+        return opcodes[index]['gas'] - opcodes[index + 1]['gas']
+    else:
+        return opcodes[index]['gasCost']
+
+
+def analyse_opcodes(opcodes):
+    gas_by_op = defaultdict(int)
+    op_times = defaultdict(int)
+    for index, call in enumerate(opcodes):
+        gas_by_op[call['op']] += gas_opcode(index, opcodes)
+        op_times[call['op']] += 1
+
+    for k, v in sorted(gas_by_op.items(), key=itemgetter(1), reverse=True):
+        print('{:>12} {}'.format(k, v))
 
 # load from geth rpc api
 trans_hash = "0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf"
@@ -21,49 +45,24 @@ json_dict = r.json()
 # json_string = open(std_path, "r").read()
 # json_dict = json.loads(r.json())
 
-
-actual_gas = json_dict['result']['gas']
 opcodes = json_dict['result']['structLogs']
 
-print("Real Gas cost: ", "{:,}".format(actual_gas))
+# print("Real Gas cost: ", "{:,}".format(actual_gas))
 web3 = Web3(HTTPProvider(deploy_contract.URL))
 max_gas = examine_trans_logs.max_gas_usage(trans_hash, web3)
-print("Maxed gas use:       ", "{:,}".format(max_gas))
-adjustment = max_gas - actual_gas
-zeros, non_zeros, zero_h, non_zero_h = examine_trans_logs.zero_bytes_trans(trans_hash, web3)
-inputs_gas_cost = zeros * 4 + non_zeros * 68 + zero_h * 4 + non_zero_h * 68
-maxed_input_cost = inputs_gas_cost + adjustment
+print("Maxed gas use:      ", "{:,}".format(max_gas))
+actual_gas = json_dict['result']['gas']
+adjustment = max_gas - actual_gas  # how much did we compensate
+zeros, non_zeros, zero_h, non_zero_h, store_version = examine_trans_logs.zeros_transaction(trans_hash, web3)
+# cost of input data in gas. txdatazero + txdatanonzero from yellowpaper
+# adjusted as if there were no null_bytes
+inputs_gas_cost = zeros * 4 + non_zeros * 68 + zero_h * 4 + non_zero_h * 68 + adjustment
 
-# we analyse gas costs in the case where there would be no zero bytes.
-# TODO; redo zero counting code
-data_input = web3.eth.getTransaction(trans_hash)['input']
-data_input = data_input[2:len(data_input)]  # strip of 0x, which is no part of cost
-zeros, non_zeros = examine_trans_logs.count_zero_bytes(data_input, 64)
-print("My zeros, non zeros: ", zeros, " ", non_zeros)
-input_cost = zeros * 4 + non_zeros * 68
-print("My Input gas cost: ", input_cost)
-git_zeros = count_zero_bytes(data_input)
-git_non_zeros = count_non_zero_bytes(data_input)
-print("Git zeros, non zeros: ", git_zeros, " ", git_non_zeros)
-git_cost = git_zeros * 4 + git_non_zeros * 68
-
-
+# constant cost to create any transaction
 cost_trans = 21000
-sum_gasses = 0
-print("Gas accounted before opcodes: " "{:,}".format(sum_gasses))
-for index, call in enumerate(opcodes):
-    if index == 0:
-        gas_to_opcodes = 5000000 - call['gas'] + adjustment
-        print("Gas used before opcodes: ", "{:,}".format(gas_to_opcodes))
-    if index != len(opcodes) - 1:
-        gas_usage = call['gas'] - opcodes[index + 1]['gas']
-        sum_gasses += gas_usage
-    else:  # last call. Assume gasCost is correct.
-        sum_gasses += call['gasCost']
+sum_gasses = cost_trans + inputs_gas_cost + gas_cost_opcodes(opcodes)
 
-print("Gass costs summed:    ", "{:,}".format(sum_gasses + cost_trans + maxed_input_cost))
-print("Non adjusted gas cost: ", "{:,}".format(cost_trans + git_cost + sum_gasses))
-# 68 over limit gas.
-# Guessing this comes from 0x
-# gas use as input - final used is correct.
-# print("{:,}".format(5000000-3838169+adjustment))
+print("Gass costs summed:  ", "{:,}".format(sum_gasses ))
+
+analyse_opcodes(opcodes)
+

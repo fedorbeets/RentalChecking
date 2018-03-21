@@ -1,11 +1,11 @@
 from web3 import Web3, HTTPProvider
 from math import floor
-import deploy_contract
+from deploy_contract import deploy_contract, URL
 
 
 def examine_trans_logs(trans_hash):
     print("Transaction logs:")
-    web3 = Web3(HTTPProvider(deploy_contract.URL))
+    web3 = Web3(HTTPProvider(URL))
 
     # Transaction to be examined
     # You must change this to examine a different transaction
@@ -141,6 +141,6 @@ def split_header(data):
 # Code not to be called upon import
 if __name__ == "__main__":
     #examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
-    web3 = Web3(HTTPProvider(deploy_contract.URL))
+    web3 = Web3(HTTPProvider(URL))
     trans_hash = "0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf"
     max_gas_usage(trans_hash, web3)

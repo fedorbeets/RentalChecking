@@ -9,14 +9,14 @@ from web3 import Web3, HTTPProvider
 from solc import compile_files
 from math import floor
 import time
-from deploy_contract import deploy_contract
+from deploy_contract import deploy_contract, URL
 from examine_trans_logs import gas_usage, max_gas_usage
 from conversion_utility import split_g2_points, split_g1_points
 import equality_test
 
 
 if __name__ == "__main__":
-    web3 = Web3(HTTPProvider(deploy_contract.URL))
+    web3 = Web3(HTTPProvider(URL))
 
     contract_file = "solidity_test_pairing_code.sol"
     contract_name = "solidity_test_pairing_code.sol:pairing_check"
@@ -31,12 +31,12 @@ if __name__ == "__main__":
     compiledCode = compiled[contract_name]
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
-    verbose = True
+    verbose = False
     verbose_print = print if verbose else lambda *a, **k: None
     #  1, 2, 3, 4, 5, 10, 15, 20
     print("Number of checks, gas usage (zero-bytes compensated)")
     # [1, 2, 3, 4, 5, 10, 15, 20]
-    for n in [5]:
+    for n in [1, 2, 3, 4, 5, 10, 15, 20]:
         # Generate values from EqualityTest
         master_keys, check_keys = equality_test.setup(n)
         rand = random.SystemRandom()
