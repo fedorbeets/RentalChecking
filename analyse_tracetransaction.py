@@ -5,17 +5,7 @@ import examine_trans_logs
 from web3 import Web3, HTTPProvider
 
 
-def count_zero_bytes(data):
-    count = 0
-    for i in range(0, len(data), 2):
-        byte = data[i:i + 2]
-        if byte == "00":
-            count += 1
-    return count
 
-
-def count_non_zero_bytes(data):
-    return (len(data) / 2) - count_zero_bytes(data)
 
 
 # load from geth rpc api
@@ -47,6 +37,7 @@ maxed_input_cost = inputs_gas_cost + adjustment
 # we analyse gas costs in the case where there would be no zero bytes.
 # TODO; redo zero counting code
 data_input = web3.eth.getTransaction(trans_hash)['input']
+data_input = data_input[2:len(data_input)]  # strip of 0x, which is no part of cost
 zeros, non_zeros = examine_trans_logs.count_zero_bytes(data_input, 64)
 print("My zeros, non zeros: ", zeros, " ", non_zeros)
 input_cost = zeros * 4 + non_zeros * 68

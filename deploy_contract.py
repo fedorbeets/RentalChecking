@@ -2,11 +2,16 @@ import time
 from solc import compile_files
 from web3 import Web3, HTTPProvider
 
+# The URL to use in all classes to address the Ethereum client
+# port 8545 for geth
+# port 7545 for ganache/testrpc - simulated ethereum blockchain
+URL = 'http://localhost:8545'
+
 
 # Basic contract compiling process.
-#   Requires that the creating account be unlocked.
-#   Note that by default, the account will only be unlocked for 5 minutes (300s).
-#   Specify a different duration in the geth personal.unlockAccount('acct','passwd',300) call, or 0 for no limit
+#   Requires that the creating account be unlocked. If this is not the default it can be done in geth with:
+#   > personal.unlockAccount( eth.accounts[0], 'passwd', 0)
+#   The 0 specifies the duration in seconds that the account is unlocked.
 
 # compiled = compile_source(source)  # if you have a source code in text
 # --optimize-runs 20000 or 1 seems to do nothing
@@ -37,6 +42,6 @@ def deploy_contract(file, contract_name, web3, args=None, verbose=True):
 
 
 if __name__ == "__main__":
-    web3 = Web3(HTTPProvider('http://localhost:8545'))
+    web3 = Web3(HTTPProvider(URL))
     deploy_contract("solidity_test_pairing_code.sol", 'solidity_test_pairing_code.sol:pairing_check', web3)
     # deploy_contract("store_token_equality_test.sol", "store_token_equality_test.sol:pairing_check_token_stored")

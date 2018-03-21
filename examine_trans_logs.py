@@ -1,12 +1,11 @@
 from web3 import Web3, HTTPProvider
 from math import floor
+import deploy_contract
 
 
-def examine_trans_logs(transaction_addr, store_token):
+def examine_trans_logs(trans_hash):
     print("Transaction logs:")
-    # port 8545 for geth
-    # port 7545 for ganache/testrpc - simulated ethereum blockchain
-    web3 = Web3(HTTPProvider('http://localhost:7545'))
+    web3 = Web3(HTTPProvider(deploy_contract.URL))
 
     # Transaction to be examined
     # You must change this to examine a different transaction
@@ -14,19 +13,17 @@ def examine_trans_logs(transaction_addr, store_token):
     # multiple uint's are encoded as follows: discard the first 2 hex chars (the 0x),
     # then 64 hex chars consequetively per uint.
     # decode: web3.toInt(hexstr=log_entry0[2:66]
-    trans_receipt = web3.eth.getTransactionReceipt(transaction_addr)
-    trans = web3.eth.getTransaction(transaction_addr)
+    trans_receipt = web3.eth.getTransactionReceipt(trans_hash)
 
-    if store_token:
-        zeros, non_zeros = zero_bytes_store(trans['input'])
-    else:
-        zeros, non_zeros = zero_bytes_normal(trans['input'])
+    zeros, non_zeros, zero_h, non_zero_h = zero_bytes_trans(trans_hash, web3)
 
     print("Input zero bytes: ", zeros)
     print("Input non-zero bytes: ", non_zeros)
+    print("Input zero bytes header: ", zero_h)
+    print("Input non-zero bytes header: ", non_zero_h)
     print(" Success:   ", trans_receipt['status'])
     print(" Gas usage: ", trans_receipt['cumulativeGasUsed'])
-    print(trans)
+    print(web3.eth.getTransaction(trans_hash))
 
     for x in range(len(trans_receipt['logs'])):
         data = trans_receipt['logs'][x]['data']
@@ -47,67 +44,103 @@ def examine_trans_logs(transaction_addr, store_token):
             print(" data: ", trans_receipt['logs'][x]['data'])
 
 
+# given a transaction_hash, returns the amount of zero bytes in the input
+def zero_bytes_trans(trans_hash, web3):
+    trans = web3.eth.getTransaction(trans_hash)
+    return zero_bytes_strip(trans['input'])
+
+
 # returns the gas usage of a transaction
-def gas_usage(trans_addr, web3):
-    trans_receipt = web3.eth.getTransactionReceipt(trans_addr)
+def gas_usage(trans_hash, web3):
+    trans_receipt = web3.eth.getTransactionReceipt(trans_hash)
     return trans_receipt['cumulativeGasUsed']
 
 
 # returns the gas usage as if the transaction had no zero bytes
-def max_gas_usage(trans_addr, web3):
-    trans_receipt = web3.eth.getTransactionReceipt(trans_addr)
-    trans = web3.eth.getTransaction(trans_addr)
-    zeros, non_zeros = zero_bytes_normal(trans['input'])
+# ignores zero bytes in function selector or pointers to data location or how long the data is
+def max_gas_usage(trans_hash, web3):
+    trans_receipt = web3.eth.getTransactionReceipt(trans_hash)
+    trans = web3.eth.getTransaction(trans_hash)
+    zero_h, non_zero_h, zero_cont, non_zero_cont, store_version = zeros_transaction(trans_hash, web3)
     normal_gas = trans_receipt['cumulativeGasUsed']
+
     # zero byte costs 4 gas/byte to input
     # non-zero byte costs 68 gas/byte to input
     # difference in cost between zero and non-zero byte for input is 64 gas.
-    return normal_gas + (zeros * 64)
+    gas_diff_zero = 68 - 4
+
+    # expect 4 non-zero bytes in function selector, common to both headers
+    # expect 2 non-zero bytes per parameter (in the length offsets). 2 parameters for store version, 6 for non_store.
+    # established through running transactions of different token lengths and looking at average bytes in header
+    if store_version:
+        difference = 6 - non_zero_h
+    else:
+        difference = difference = 14 - non_zero_h
+    header_adjustment = difference * gas_diff_zero
+
+    return normal_gas + (zero_cont * gas_diff_zero) + header_adjustment
 
 
-# returns the number of zero bytes in the uint number input data, for the normal contract that sends the token each time
-# ignores zero bytes in function selector or pointers to data location or how long the data is
-def zero_bytes_normal(trans_input):
-    # strip of 0x and function selector
-    rest = trans_input[10:len(trans_input)]
+# returns the number of zero bytes, non-zero bytes in the data.
+def count_bytes(data):
+    zeros = 0
+    for i in range(0, len(data), 2):
+        byte = data[i:i + 2]
+        if byte == "00":
+            zeros += 1
+    return zeros, (len(data) / 2) - zeros
+
+
+# returns the number of zero bytes, non-zero bytes for the header and the points of a test
+# also returns if store version of contract or non-store
+def zeros_transaction(trans_hash, web3):
+    trans = web3.eth.getTransaction(trans_hash)
+
+    data = trans['input']
+    # strip off 0x
+    data = data[2:len(data)]
+    tots_zero, tots_non_zero = count_bytes(data)
+    function_selector = data[0:8]
+    data = data[8:]
+    header, rest, store_version = split_header(data)
+
+    zero_fun, non_zero_fun = count_bytes(function_selector)
+    zero_h, non_zero_h = count_bytes(header)
+    zero_h += zero_fun
+    non_zero_h += non_zero_fun
+    zero_cont, non_zero_cont = count_bytes(rest)
+
+    assert zero_h + zero_cont == tots_zero
+    assert non_zero_h + non_zero_cont == tots_non_zero
+    return zero_h, non_zero_h, zero_cont, non_zero_cont, store_version
+
+
+# takes equality_test transaction that has been stripped upto including function selector
+# returns the data split into a header part and a body part. The body part containing the points and length indicators
+def split_header(data):
+    # guess if store or non-store contract
     stepsize = 64  # 32 bytes
-
-    # ignore data location indicators
-    rest = rest[6 * stepsize: len(rest)]
-
-    return count_zero_bytes(rest, stepsize)
-
-
-# like zero_bytes_normal but then for transactions where token is stored
-def zero_bytes_store(trans_input):
-    # strip of 0x and function selector
-    rest = trans_input[10:len(trans_input)]
-    stepsize = 64  # 32 bytes
-    # strip off data location indicators
-    rest = rest[2 * stepsize: len(rest)]
-
-    return count_zero_bytes(rest, stepsize)
-
-
-def count_zero_bytes(argument_hex, stepsize):
-    zeros_b = 0
-    non_zero_b = 0
-    # length of byte array in elements
-    length_indicator = argument_hex[0:stepsize]
-    for i in range(0, len(argument_hex) // stepsize):
-        chunk = argument_hex[i * stepsize:(i + 1) * stepsize]
-        if chunk == length_indicator:
-            continue
-        else:
-            # check for 0 bytes, or 00 strings
-            for j in range(0, 64, 2):
-                if chunk[j:j + 2] == '00':
-                    zeros_b += 1
-                else:
-                    non_zero_b += 1
-    return zeros_b, non_zero_b
+    # guess if normal transaction or one where token is stored
+    chunk3 = data[3 * stepsize: 4 * stepsize]
+    chunk3int = int(chunk3, 16)
+    store_version = False
+    # if store version then only 2 arrays of uints, and the third chunk should be a length indicator
+    # a length indicator is just the TokenLength*2+1. If it's still a data offset then it's always divisble by 32
+    # thus length indicator is uneven, and data offset is even
+    if chunk3int % 2 == 1:
+        store_version = True
+    if not store_version:
+        header = data[0: 6 * stepsize]
+        rest = data[6 * stepsize:]
+    if store_version:
+        header = data[0: 2 * stepsize]
+        rest = data[2 * stepsize:]
+    return header, rest, store_version
 
 
 # Code not to be called upon import
 if __name__ == "__main__":
-    examine_trans_logs(0xc0319b577eb21ee30a70ce6e91a4293e485d78630b6e1420500f1e8fe2297280)
+    #examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
+    web3 = Web3(HTTPProvider(deploy_contract.URL))
+    trans_hash = "0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf"
+    max_gas_usage(trans_hash, web3)
