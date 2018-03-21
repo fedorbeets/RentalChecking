@@ -2,6 +2,8 @@ from web3 import Web3, HTTPProvider
 from math import floor
 from deploy_contract import deploy_contract, URL
 
+STEPSIZE = 64  # 32 bytes
+
 
 def examine_trans_logs(trans_hash):
     print("Transaction logs:")
@@ -15,7 +17,7 @@ def examine_trans_logs(trans_hash):
     # decode: web3.toInt(hexstr=log_entry0[2:66]
     trans_receipt = web3.eth.getTransactionReceipt(trans_hash)
 
-    zeros, non_zeros, zero_h, non_zero_h = zero_bytes_trans(trans_hash, web3)
+    zeros, non_zeros, zero_h, non_zero_h = zeros_transaction(trans_hash, web3)
 
     print("Input zero bytes: ", zeros)
     print("Input non-zero bytes: ", non_zeros)
@@ -42,12 +44,6 @@ def examine_trans_logs(trans_hash):
                 print("       uint", j, ": ", number)
         else:  # don't know data type, just print bytes
             print(" data: ", trans_receipt['logs'][x]['data'])
-
-
-# given a transaction_hash, returns the amount of zero bytes in the input
-def zero_bytes_trans(trans_hash, web3):
-    trans = web3.eth.getTransaction(trans_hash)
-    return zero_bytes_strip(trans['input'])
 
 
 # returns the gas usage of a transaction
@@ -119,28 +115,58 @@ def zeros_transaction(trans_hash, web3):
 # returns the data split into a header part and a body part. The body part containing the points and length indicators
 def split_header(data):
     # guess if store or non-store contract
-    stepsize = 64  # 32 bytes
+    store = store_version(data)
+
+    if not store_version:
+        header = data[0: 6 * STEPSIZE]
+        rest = data[6 * STEPSIZE:]
+    if store_version:
+        header = data[0: 2 * STEPSIZE]
+        rest = data[2 * STEPSIZE:]
+    return header, rest, store
+
+
+# takes equality_test transaction that has been stripped upto including function selector
+# returns whether the token was already stored or is in input data
+def store_version(data):
     # guess if normal transaction or one where token is stored
-    chunk3 = data[3 * stepsize: 4 * stepsize]
-    chunk3int = int(chunk3, 16)
-    store_version = False
+    chunk2 = data[2 * STEPSIZE: 3 * STEPSIZE]
+    chunk2int = int(chunk2, 16)
+    store = False
     # if store version then only 2 arrays of uints, and the third chunk should be a length indicator
     # a length indicator is just the TokenLength*2+1. If it's still a data offset then it's always divisble by 32
     # thus length indicator is uneven, and data offset is even
-    if chunk3int % 2 == 1:
-        store_version = True
-    if not store_version:
-        header = data[0: 6 * stepsize]
-        rest = data[6 * stepsize:]
-    if store_version:
-        header = data[0: 2 * stepsize]
-        rest = data[2 * stepsize:]
-    return header, rest, store_version
+    if chunk2int % 2 == 1:
+        store = True
+    return store
+
+
+# takes equality_test transaction that has been stripped upto including function selector
+def token_length(trans_hash, web3):
+    trans = web3.eth.getTransaction(trans_hash)
+
+    data = trans['input']
+    # strip off 0x
+    data = data[2:len(data)]
+    tots_zero, tots_non_zero = count_bytes(data)
+    function_selector = data[0:8]
+    data = data[8:]
+    store = store_version(data)
+    print(store)
+    if store:
+        chunk2 = data[2 * STEPSIZE: 3 * STEPSIZE]
+        chunk2int = int(chunk2, 16)
+        token_len = (chunk2int-1) // 2
+    else:
+        chunk6 = data[6 * STEPSIZE: 7 * STEPSIZE]
+        chunk6int = int(chunk6, 16)
+        token_len = (chunk6int-1) // 2
+    return token_len
 
 
 # Code not to be called upon import
 if __name__ == "__main__":
-    #examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
+    # examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
     web3 = Web3(HTTPProvider(URL))
-    trans_hash = "0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf"
-    max_gas_usage(trans_hash, web3)
+    trans_hash = "0xfb4aaf60ce3421dc447111dfadc9569fb42bfd2cc78c1e5a3a14cc56f7731205"
+    print(token_length(trans_hash, web3))
