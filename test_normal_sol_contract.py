@@ -36,7 +36,8 @@ if __name__ == "__main__":
     #  1, 2, 3, 4, 5, 10, 15, 20
     print("Number of checks, gas usage (zero-bytes compensated)")
     # [1, 2, 3, 4, 5, 10, 15, 20]
-    for n in [1, 2, 3, 4, 5, 10, 15, 20]:
+    # 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+    for n in [7, 8, 9, 10, 11, 12, 13, 14, 15]:
         # Generate values from EqualityTest
         master_keys, check_keys = equality_test.setup(n)
         rand = random.SystemRandom()
@@ -87,7 +88,7 @@ if __name__ == "__main__":
         transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
         verbose_print("Transaction address: ", transaction_addr.hex())
         # examine_trans_logs(contractAddr, transaction_addr.hex())
-        gas_used = gas_usage(transaction_addr.hex(), web3)
+        # gas_used = gas_usage(transaction_addr.hex(), web3)
         gas_used_maxed = max_gas_usage(transaction_addr.hex(), web3)
         print(n, " ,", gas_used_maxed)
 

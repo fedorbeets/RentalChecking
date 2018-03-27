@@ -56,8 +56,7 @@ def gas_usage(trans_hash, web3):
 # ignores zero bytes in function selector or pointers to data location or how long the data is
 def max_gas_usage(trans_hash, web3):
     trans_receipt = web3.eth.getTransactionReceipt(trans_hash)
-    trans = web3.eth.getTransaction(trans_hash)
-    zero_h, non_zero_h, zero_cont, non_zero_cont, store_version = zeros_transaction(trans_hash, web3)
+    zero_h, non_zero_h, zero_cont, non_zero_cont = zeros_transaction(trans_hash, web3)
     normal_gas = trans_receipt['cumulativeGasUsed']
 
     # zero byte costs 4 gas/byte to input
@@ -66,15 +65,19 @@ def max_gas_usage(trans_hash, web3):
     gas_diff_zero = 68 - 4
 
     # expect 4 non-zero bytes in function selector, common to both headers
-    # expect 2 non-zero bytes per parameter (in the length offsets). 2 parameters for store version, 6 for non_store.
+    # expect 3 non-zero bytes per parameter (in the length offsets). 2 parameters for store version, 6 for non_store.
     # established through running transactions of different token lengths and looking at average bytes in header
-    if store_version:
-        difference = 6 - non_zero_h
-    else:
-        difference = difference = 14 - non_zero_h
-    header_adjustment = difference * gas_diff_zero
+    difference = 0
+    if 5 < non_zero_h < 15:  # store version
+        difference = 8 - non_zero_h
+    elif 15 < non_zero_h < 25:  # non-store version
+        difference = 20 - non_zero_h
+    elif 25 < non_zero_h < 35:  # contract
+        difference = 32 - non_zero_h
 
-    return normal_gas + (zero_cont * gas_diff_zero) + header_adjustment
+    header_adjustment = difference * gas_diff_zero
+    body_adjustment = (zero_cont * gas_diff_zero)
+    return normal_gas + body_adjustment + header_adjustment
 
 
 # returns the number of zero bytes, non-zero bytes in the data.
@@ -98,32 +101,30 @@ def zeros_transaction(trans_hash, web3):
     tots_zero, tots_non_zero = count_bytes(data)
     function_selector = data[0:8]
     data = data[8:]
-    header, rest, store_version = split_header(data)
 
-    zero_fun, non_zero_fun = count_bytes(function_selector)
-    zero_h, non_zero_h = count_bytes(header)
-    zero_h += zero_fun
-    non_zero_h += non_zero_fun
-    zero_cont, non_zero_cont = count_bytes(rest)
+    # start header with function selector bytes
+    zero_h, non_zero_h = count_bytes(function_selector)
+    zero_cont, non_zero_cont = 0, 0
+    # header_length = 0
+
+    for chunk_index in range(0, len(data) - 1, STEPSIZE):
+        # 32 byte slice of data
+        chunk = data[chunk_index:chunk_index + STEPSIZE]
+        zero_d, non_zero_d = count_bytes(chunk)
+        # heuristic for if to add to header
+        # if more than half is zero bytes, then it's part of header.
+        # print(chunk, "   zeros: ", zero_d)
+        if zero_d > non_zero_d:
+            # header_length += 1
+            zero_h += zero_d
+            non_zero_h += non_zero_d
+        else:
+            zero_cont += zero_d
+            non_zero_cont += non_zero_d
 
     assert zero_h + zero_cont == tots_zero
     assert non_zero_h + non_zero_cont == tots_non_zero
-    return zero_h, non_zero_h, zero_cont, non_zero_cont, store_version
-
-
-# takes equality_test transaction that has been stripped upto including function selector
-# returns the data split into a header part and a body part. The body part containing the points and length indicators
-def split_header(data):
-    # guess if store or non-store contract
-    store = store_version(data)
-
-    if not store_version:
-        header = data[0: 6 * STEPSIZE]
-        rest = data[6 * STEPSIZE:]
-    if store_version:
-        header = data[0: 2 * STEPSIZE]
-        rest = data[2 * STEPSIZE:]
-    return header, rest, store
+    return zero_h, non_zero_h, zero_cont, non_zero_cont
 
 
 # takes equality_test transaction that has been stripped upto including function selector
@@ -152,15 +153,14 @@ def token_length(trans_hash, web3):
     function_selector = data[0:8]
     data = data[8:]
     store = store_version(data)
-    print(store)
     if store:
-        chunk2 = data[2 * STEPSIZE: 3 * STEPSIZE]
+        chunk2 = data[0 * STEPSIZE: 1 * STEPSIZE]
         chunk2int = int(chunk2, 16)
-        token_len = (chunk2int-1) // 2
+        token_len = (chunk2int - 1) // 2
     else:
         chunk6 = data[6 * STEPSIZE: 7 * STEPSIZE]
         chunk6int = int(chunk6, 16)
-        token_len = (chunk6int-1) // 2
+        token_len = (chunk6int - 1) // 2
     return token_len
 
 
@@ -168,5 +168,5 @@ def token_length(trans_hash, web3):
 if __name__ == "__main__":
     # examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
     web3 = Web3(HTTPProvider(URL))
-    trans_hash = "0xfb4aaf60ce3421dc447111dfadc9569fb42bfd2cc78c1e5a3a14cc56f7731205"
+    trans_hash = "0x294d9f5de346c8793227981d668d89a69d3210d6480e66b22c51c0e63a5b378c"
     print(token_length(trans_hash, web3))
