@@ -27,7 +27,7 @@ def setup(n, alpha=0, gamma=0, beta=0):  # optional rng determination for testin
 
     # rng setup
     if alpha != 0:  # if random number pregiven
-        assert(gamma != 0 and beta != 0)
+        assert (gamma != 0 and beta != 0)
         alphas = alpha
         gammas = gamma
         betas = beta
@@ -66,7 +66,7 @@ def single_setup(alpha=0, gamma=0, beta=0):
 # rule - list of n numbers in "message space"
 # n - length of rule vector
 def gen_token(msks, rule, n, u=0):
-    assert(len(rule) == n)
+    assert (len(rule) == n)
     rand = random.SystemRandom()
     pool = Pool()
 
@@ -139,6 +139,7 @@ def test(token, n, *arg):
     return check_total == token_total
 
 
+# Implementation of Naor and Reingold construction: https://dl.acm.org/citation.cfm?id=972643 .
 # pseudo-random permutation function
 def prp(b: list, x: int) -> int:
     output = 1
@@ -158,26 +159,25 @@ def elliptic_hash(number: int) -> tuple:
     return multiply(pairing.G1, modded_number)
 
 
-def test_routine():
-    print("Setup")
-    master_keys, check_keys = setup(5)
-    print("GenToken")
-    test_token = gen_token(master_keys, [3, 3, 3, 3, 3], 5)
-    print("encrypt checks")
+def test_routine(n):
+    #print("Setup")
+    master_keys, check_keys = setup(n)
+    #print("GenToken")
+    rule = [3]*n
+    test_token = gen_token(master_keys, rule, n)
+    #print("encrypt checks")
     identifier = 5
-    check1 = encrypt(check_keys[0], identifier, 3)
-    check2 = encrypt(check_keys[1], identifier, 3)
-    check3 = encrypt(check_keys[2], identifier, 3)
-    check4 = encrypt(check_keys[3], identifier, 3)
-    check5 = encrypt(check_keys[4], identifier, 3)
+    checks = []
+    for i in range(n):
+        checks.append(encrypt(check_keys[i], identifier, 3))
 
-    print(master_keys)
-    #print("Check")
-    #result = test(test_token, 5, check1, check2, check3, check4, check5)
+    #print(master_keys)
+    # print("Check")
+    #result = test(test_token, 5, *checks)
     #print("Token = check:    ", result)
 
 
 if __name__ == "__main__":
-    test_routine()
+    #test_routine(5)
     # add e.g. sort='cumulative' to sort the output
-    #cProfile.run('test_routine()')
+    cProfile.run('test_routine(11)', sort='cumtime')

@@ -1,27 +1,20 @@
 // In remix: compile EqualityTest.sol, not pairing.sol
 pragma solidity ^0.4.19;
 
+// Input array loop and inline assembly taken from Christian Reitwiessner,
+// from https://gist.github.com/chriseth/f9be9d9391efc5beb9704255a8e2989d
+
+// This file is MIT Licensed.
+//
+// Copyright 2018 Fedor Beets
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
 contract pairing_check {
 
     event Result(bool result);
-
-//    struct G1Point {
-//		uint X;
-//		uint Y;
-//	}
-	// Encoding of field elements is: X[0] * z + X[1]
-//	struct G2Point {
-//		uint[2] X;
-//		uint[2] Y;
-//	}
-
-//    event Points(uint pointX, uint pointY);
-
-//    event PointG2(uint pointX1,
-//                uint pointX2,
-//                uint pointY1,
-//                uint pointY2);
-
 
     // To test for equality:
     // First N points must be "left side of equation"
@@ -71,13 +64,4 @@ contract pairing_check {
         Result(success); //emit event
         return success;
         }
-
-
 }
-// From https://gist.github.com/chriseth/f9be9d9391efc5beb9704255a8e2989d
-// This file is MIT Licensed.
-//
-// Copyright 2017 Christian Reitwiessner
-// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

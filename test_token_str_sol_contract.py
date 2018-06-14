@@ -8,7 +8,10 @@ from deploy_contract import deploy_contract, URL
 from conversion_utility import split_g1_points, split_g2_points
 from examine_trans_logs import max_gas_usage, gas_usage
 # 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-for n in [10,11,12,13,14,15]:
+
+verbose = True
+verbose_print = print if verbose else lambda *a, **k: None
+for n in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
     # generate token
     # Generate values from EqualityTest
     master_keys, check_keys = equality_test.setup(n)
@@ -39,7 +42,7 @@ for n in [10,11,12,13,14,15]:
     (contractAddr, contract_trans) = deploy_contract(contract_file, contract_name, web3, args, True)
     gas_use_deploy = gas_usage(contract_trans, web3)
     gas_max_deploy = max_gas_usage(contract_trans, web3)
-    print("Gas used to deploy n=", n, "contract: ", gas_use_deploy)
+    verbose_print("Gas used to deploy n=", n, "contract: ", gas_use_deploy)
     print("Gas used to deploy n=", n, "contract: ", gas_max_deploy, "   maxed")
 
     compiled = compile_files([contract_file], "--optimized")
@@ -74,5 +77,7 @@ for n in [10,11,12,13,14,15]:
     while web3.eth.getTransaction(tx_hash)['blockNumber'] is None:
         time.sleep(1)
     transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
+    gas_used = gas_usage(transaction_addr.hex(), web3)
+    verbose_print(n, " ,", gas_used, "  actual gas used")
     gas_used_maxed = max_gas_usage(transaction_addr.hex(), web3)
-    # print(n, " ,", gas_used_maxed)
+    print(n, " ,", gas_used_maxed)

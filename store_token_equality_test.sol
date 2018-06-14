@@ -14,25 +14,7 @@ pragma solidity ^0.4.19;
 contract pairing_check_token_stored {
 
     event Result(bool result);
-    
-    
-    
-//    struct G1Point {
-//		uint X;
-//		uint Y;
-//	}
-	// Encoding of field elements is: X[0] * z + X[1]
-//	struct G2Point {
-//		uint[2] X;
-//		uint[2] Y;
-//	}
 
-//    event Points(uint pointX, uint pointY);
-
-//    event PointG2(uint pointX1,
-//                uint pointX2,
-//                uint pointY1,
-//                uint pointY2);
     // Token part of equality test
     uint[] private g2_x_i;
     uint[] private g2_x_r;

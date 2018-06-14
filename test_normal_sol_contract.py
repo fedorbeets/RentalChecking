@@ -31,13 +31,13 @@ if __name__ == "__main__":
     compiledCode = compiled[contract_name]
     contract_instance = web3.eth.contract(contractAddr, abi=compiledCode['abi'])
 
-    verbose = False
+    verbose = True
     verbose_print = print if verbose else lambda *a, **k: None
     #  1, 2, 3, 4, 5, 10, 15, 20
     print("Number of checks, gas usage (zero-bytes compensated)")
     # [1, 2, 3, 4, 5, 10, 15, 20]
     # 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-    for n in [7, 8, 9, 10, 11, 12, 13, 14, 15]:
+    for n in [6, 7, 8, 9, 10]:
         # Generate values from EqualityTest
         master_keys, check_keys = equality_test.setup(n)
         rand = random.SystemRandom()
@@ -88,9 +88,10 @@ if __name__ == "__main__":
         transaction_addr = web3.eth.getTransaction(tx_hash)['hash']
         verbose_print("Transaction address: ", transaction_addr.hex())
         # examine_trans_logs(contractAddr, transaction_addr.hex())
-        # gas_used = gas_usage(transaction_addr.hex(), web3)
+        gas_used = gas_usage(transaction_addr.hex(), web3)
+        verbose_print(n, " ,", gas_used , "  actual gas used")
         gas_used_maxed = max_gas_usage(transaction_addr.hex(), web3)
-        print(n, " ,", gas_used_maxed)
+        print(n, " ,", gas_used_maxed, "  maxed gas used")
 
         if False:
             outputs = contract_instance.call({'from': web3.eth.accounts[0], 'gas': 4000000}).test_equality(

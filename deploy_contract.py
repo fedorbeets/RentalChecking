@@ -5,7 +5,7 @@ from web3 import Web3, HTTPProvider
 # The URL to use in all classes to address the Ethereum client
 # port 8545 for geth
 # port 7545 for ganache/testrpc - simulated ethereum blockchain
-URL = 'http://localhost:8545'
+URL = 'http://localhost:7545'
 
 
 # Basic contract compiling process.

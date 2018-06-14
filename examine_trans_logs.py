@@ -149,8 +149,7 @@ def token_length(trans_hash, web3):
     data = trans['input']
     # strip off 0x
     data = data[2:len(data)]
-    tots_zero, tots_non_zero = count_bytes(data)
-    function_selector = data[0:8]
+    # Strip off function selector
     data = data[8:]
     store = store_version(data)
     if store:
@@ -168,5 +167,6 @@ def token_length(trans_hash, web3):
 if __name__ == "__main__":
     # examine_trans_logs(0x2f2719bebc83f8f49630f189e10a09fe3a5224cb4c0b87f7c051adcdd1b606bf)
     web3 = Web3(HTTPProvider(URL))
+    # Insert your own transaction hash
     trans_hash = "0x294d9f5de346c8793227981d668d89a69d3210d6480e66b22c51c0e63a5b378c"
     print(token_length(trans_hash, web3))
